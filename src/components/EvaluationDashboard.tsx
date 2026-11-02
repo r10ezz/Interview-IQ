@@ -106,8 +106,8 @@ export default function EvaluationDashboard({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-slate-200 gap-4">
         <div>
           <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-medium mb-2 shadow-xs">
-            <GraduationCap className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Academic Research Evaluation Report</span>
+            <Award className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Interview Performance Report</span>
             {source === 'fallback' && (
               <span className="text-[10px] ml-1.5 px-1.5 py-0.5 rounded bg-amber-50 border border-amber-200 text-amber-700 font-semibold">
                 Offline Mode

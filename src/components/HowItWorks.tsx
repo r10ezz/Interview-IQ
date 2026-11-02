@@ -11,68 +11,68 @@ export default function HowItWorks() {
       icon: UploadCloud,
       color: 'from-blue-600 to-indigo-600',
       description:
-        'Upload your PDF resume and paste your target job description. The system extracts structured experience, projects, skills, and core role prerequisites.',
+        'Upload your PDF resume and paste the target job description. The system extracts skills, projects, and role prerequisites.',
     },
     {
       step: '02',
-      title: 'Semantic Alignment',
+      title: 'Alignment Analysis',
       icon: Search,
       color: 'from-indigo-600 to-violet-600',
       description:
-        'Gemini performs bi-directional matching to highlight matching strengths, identify skill gaps, and compute an initial candidate-role alignment score.',
+        'Bi-directional matching identifies verified strengths, flags skill gaps, and computes an overall role-fit score.',
     },
     {
       step: '03',
-      title: 'Adaptive Mock Interview',
+      title: 'Interactive Interview',
       icon: MessageSquareCode,
       color: 'from-violet-600 to-purple-600',
       description:
-        'Participate in an interactive interview. Each response is graded in real-time, prompting dynamic difficulty shifts and contextual follow-up questions.',
+        'Practice Foundation questions, live coding with automated test cases, and behavioral scenarios with instant evaluation.',
     },
     {
       step: '04',
-      title: 'Multi-Rubric Evaluation',
+      title: 'Rubric & Roadmap',
       icon: Award,
       color: 'from-purple-600 to-pink-600',
       description:
-        'Receive a comprehensive performance evaluation featuring radar competency charts, question-level critiques, model answers, and a prioritized study roadmap.',
+        'Review your radar chart, question breakdowns, code efficiency metrics, and a prioritized study roadmap.',
     },
   ];
 
   return (
-    <section className="py-16 border-t border-slate-200 bg-white">
+    <section className="py-14 border-t border-slate-200 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto">
           <h2 className="text-xs font-semibold text-indigo-600 uppercase tracking-wider">
-            Evaluation Methodology
+            Workflow Overview
           </h2>
           <p className="mt-2 text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-            How InterviewIQ Evaluates You
+            How InterviewIQ Works
           </p>
-          <p className="mt-3 text-sm text-slate-500">
-            A 4-stage adaptive pipeline designed according to modern academic research standards in AI assessment.
+          <p className="mt-2 text-sm text-slate-500">
+            From resume parsing and job description matching to live practice and rubric analytics.
           </p>
         </div>
 
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="mt-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           {steps.map((item) => {
             const Icon = item.icon;
             return (
               <div
                 key={item.step}
-                className="relative p-6 rounded-2xl bg-slate-50/80 border border-slate-200 hover:border-slate-300 hover:bg-white hover:shadow-md transition-all group"
+                className="relative p-5 rounded-2xl bg-slate-50/80 border border-slate-200 hover:border-slate-300 hover:bg-white hover:shadow-md transition-all group"
               >
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-3">
                   <div
-                    className={`w-10 h-10 rounded-xl bg-gradient-to-tr ${item.color} flex items-center justify-center text-white shadow-sm`}
+                    className={`w-9 h-9 rounded-xl bg-gradient-to-tr ${item.color} flex items-center justify-center text-white shadow-xs`}
                   >
-                    <Icon className="w-5 h-5" />
+                    <Icon className="w-4 h-4" />
                   </div>
-                  <span className="text-2xl font-black text-slate-300 group-hover:text-slate-400 transition-colors">
+                  <span className="text-xl font-black text-slate-300 group-hover:text-slate-400 transition-colors">
                     {item.step}
                   </span>
                 </div>
-                <h3 className="text-base font-semibold text-slate-900 mb-2">
+                <h3 className="text-sm font-semibold text-slate-900 mb-1.5">
                   {item.title}
                 </h3>
                 <p className="text-xs text-slate-600 leading-relaxed">

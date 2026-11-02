@@ -13,16 +13,17 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "InterviewIQ — AI-Driven Adaptive Mock Interview System",
+  title: "InterviewIQ — Adaptive AI Technical Mock Interview System",
   description:
-    "An AI-powered adaptive mock interview platform that analyzes resumes & job descriptions to generate personalized questions and evaluations. MCA Research Project.",
+    "An AI-powered adaptive mock interview platform that cross-references resumes and job descriptions to generate personalized questions, live coding challenges, and multi-rubric evaluations.",
   keywords: [
     "AI Mock Interview",
     "Adaptive Interview System",
-    "MCA Research",
-    "Gemini API",
+    "Live Coding",
+    "DSA Practice",
+    "Gemini AI",
     "Resume Analysis",
-    "Job Description Context",
+    "Job Description Matching",
   ],
 };
 

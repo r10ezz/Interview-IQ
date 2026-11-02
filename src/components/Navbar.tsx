@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Sparkles, GraduationCap, Key, RotateCcw } from 'lucide-react';
+import { Sparkles, Key, RotateCcw } from 'lucide-react';
 
 interface NavbarProps {
   onOpenApiKeyModal?: () => void;
@@ -26,7 +26,7 @@ export default function Navbar({
           role="button"
           tabIndex={0}
         >
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center shadow-md shadow-indigo-600/20 group-hover:scale-105 transition-transform duration-200">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center shadow-sm shadow-indigo-600/20 group-hover:scale-105 transition-transform duration-200">
             <Sparkles className="w-4 h-4 text-white" />
           </div>
           <div>
@@ -35,17 +35,16 @@ export default function Navbar({
                 Interview<span className="text-indigo-600">IQ</span>
               </span>
               <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                <GraduationCap className="w-3 h-3 mr-1 text-indigo-600" />
-                MCA Research
+                AI Platform
               </span>
             </div>
             <p className="text-[11px] text-slate-500 hidden md:block">
-              Adaptive AI Mock Interview System
+              Adaptive Technical Mock Interviews
             </p>
           </div>
         </div>
 
-        {/* Current State Indicator & Actions */}
+        {/* Actions */}
         <div className="flex items-center space-x-2.5">
           {currentStep !== 'landing' && (
             <button

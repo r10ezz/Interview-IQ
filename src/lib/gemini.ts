@@ -567,7 +567,7 @@ ${JSON.stringify(codingSubmissions.map((s, i) => ({
         }
       }));
 
-      const prompt = `You are the Lead Hiring Committee Evaluator delivering the final MCA research evaluation report for candidate "${analysis.candidateName}".
+      const prompt = `You are the Lead Hiring Committee Evaluator delivering the final comprehensive interview evaluation report for candidate "${analysis.candidateName}".
 
 INTERVIEW HISTORY & EVALUATIONS:
 ${JSON.stringify(summaryHistory, null, 2)}

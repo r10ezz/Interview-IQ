@@ -135,51 +135,22 @@ export default function SetupForm({
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
       {/* Header */}
       <div className="text-center mb-8">
-        <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-medium mb-3 shadow-xs">
-          <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-          <span>Stage 1: Context Ingestion</span>
-        </div>
         <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
           Configure Your Mock Interview
         </h2>
         <p className="text-xs sm:text-sm text-slate-500 mt-2 max-w-xl mx-auto">
-          Upload your resume and paste your target job description. InterviewIQ extracts technical competencies and generates tailored, adaptive questions.
+          Upload your resume and job description. Select the rounds you want to practice.
         </p>
       </div>
 
-      {/* AI Live Engine Badge (Zero Setup) */}
-      <div className="mb-6 p-4 rounded-2xl bg-white border border-slate-200 flex items-center justify-between shadow-xs">
-        <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
-            <Cpu className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <span className="text-xs font-semibold text-slate-900">Google Gemini AI Engine</span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center space-x-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span>Active & Ready</span>
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-500">
-              Personalized questioning and real-time evaluation are automatically enabled.
-            </p>
-          </div>
-        </div>
-
-        <span className="text-[11px] text-slate-400 hidden sm:inline">
-          Zero configuration needed
-        </span>
-      </div>
-
       {/* Preset Selector Banner */}
-      <div className="mb-8 p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
+      <div className="mb-6 p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
         <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
           <div className="flex items-center space-x-2 text-xs font-semibold text-slate-800">
             <Zap className="w-4 h-4 text-amber-500" />
-            <span>Fast-Track Demo Presets</span>
+            <span>1-Click Demo Profiles</span>
           </div>
-          <span className="text-[11px] text-slate-500">Click to instantly populate:</span>
+          <span className="text-[11px] text-slate-500">Quick-load sample resume & JD:</span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
           {SAMPLE_PRESETS.map((p) => {
@@ -198,7 +169,7 @@ export default function SetupForm({
                 <div className="font-semibold text-slate-900">{p.name}</div>
                 <div className="text-[11px] text-slate-500 mt-1 truncate">{p.jobTitle}</div>
                 <div className="mt-2 text-[10px] text-indigo-600 font-semibold">
-                  {isSelected ? '✓ Currently Loaded' : 'Load Candidate & JD →'}
+                  {isSelected ? '✓ Loaded' : 'Load Profile →'}
                 </div>
               </button>
             );
@@ -220,7 +191,7 @@ export default function SetupForm({
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-slate-700 flex items-center space-x-1.5">
                 <FileCheck className="w-4 h-4 text-indigo-600" />
-                <span>Candidate Resume (PDF)</span>
+                <span>Resume (PDF)</span>
               </label>
               {resumeFileName && (
                 <button
@@ -279,8 +250,8 @@ export default function SetupForm({
                   </p>
                   <p className="text-[11px] text-emerald-700 font-medium">
                     {selectedFile
-                      ? `${(selectedFile.size / 1024).toFixed(1)} KB (Ready to extract)`
-                      : 'Preset resume loaded'}
+                      ? `${(selectedFile.size / 1024).toFixed(1)} KB (PDF Ready)`
+                      : 'Loaded from preset'}
                   </p>
                   <span className="text-[10px] text-slate-500 mt-2 hover:underline">
                     Click to replace PDF
@@ -295,8 +266,8 @@ export default function SetupForm({
                     <p className="text-sm font-medium text-slate-700">
                       Drop your PDF resume here, or <span className="text-indigo-600 font-semibold underline">browse</span>
                     </p>
-                    <p className="text-[11px] text-slate-500 mt-1">
-                      Max file size: 5MB • Formats: PDF only
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Max 5MB • PDF only
                     </p>
                   </div>
                 </div>
@@ -309,7 +280,7 @@ export default function SetupForm({
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-slate-700 flex items-center space-x-1.5">
                 <Briefcase className="w-4 h-4 text-violet-600" />
-                <span>Target Job Description</span>
+                <span>Job Description</span>
               </label>
               <span className="text-[11px] text-slate-400">
                 {jobDescription.length} characters
@@ -319,7 +290,7 @@ export default function SetupForm({
             <textarea
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
-              placeholder="Paste the target job role, required skills, responsibilities, and qualifications..."
+              placeholder="Paste the job description, required skills, and responsibilities..."
               rows={9}
               className="w-full flex-1 px-4 py-3 rounded-2xl bg-white border border-slate-300 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 leading-relaxed resize-none shadow-xs"
             />
@@ -331,7 +302,7 @@ export default function SetupForm({
           <div className="flex items-center justify-between pb-2 border-b border-slate-100">
             <div className="flex items-center space-x-2 text-xs font-semibold text-slate-800">
               <Sparkles className="w-4 h-4 text-violet-600" />
-              <span>Select Interview Rounds (Choose 1 to All)</span>
+              <span>Select Interview Rounds</span>
             </div>
             <span className="text-[11px] text-slate-500">
               {selectedRounds.length} of 3 Selected
@@ -365,7 +336,7 @@ export default function SetupForm({
                 </div>
                 <h4 className="text-xs font-bold text-slate-900">Foundation & Concepts</h4>
                 <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                  Language runtime, async event loops, framework mechanics, and most-asked technical questions for your role.
+                  Core language mechanics, frameworks, runtime internals, and most-asked technical questions.
                 </p>
               </div>
             </div>
@@ -396,7 +367,7 @@ export default function SetupForm({
                 </div>
                 <h4 className="text-xs font-bold text-slate-900">Live Coding & DSA</h4>
                 <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                  LeetCode / HackerRank style algorithmic challenges with interactive test cases and Big-O evaluation.
+                  LeetCode-style code editor with sample test execution and automated Big-O complexity grading.
                 </p>
               </div>
             </div>
@@ -425,9 +396,9 @@ export default function SetupForm({
                     {selectedRounds.includes('behavioral') ? '✓ Included' : '+ Add'}
                   </span>
                 </div>
-                <h4 className="text-xs font-bold text-slate-900">Behavioral & Leadership</h4>
+                <h4 className="text-xs font-bold text-slate-900">Behavioral & Scenarios</h4>
                 <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                  STAR method scenarios addressing your resume projects, conflict resolution, and cross-functional ownership.
+                  STAR method scenarios addressing resume projects, team conflict, and engineering decisions.
                 </p>
               </div>
             </div>
@@ -456,9 +427,6 @@ export default function SetupForm({
                 <option value="intermediate">Intermediate (Production Patterns)</option>
                 <option value="advanced">Advanced (High Scale & Trade-offs)</option>
               </select>
-              <p className="text-[10px] text-slate-500 mt-1">
-                Adapts dynamically based on candidate answers.
-              </p>
             </div>
 
             {/* Length */}
@@ -475,9 +443,6 @@ export default function SetupForm({
                 <option value={5}>Standard Mock (5 Questions - Recommended)</option>
                 <option value={7}>Comprehensive (7 Questions)</option>
               </select>
-              <p className="text-[10px] text-slate-500 mt-1">
-                Evenly distributed across selected verbal rounds.
-              </p>
             </div>
           </div>
         </div>

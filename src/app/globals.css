@@ -52,7 +52,7 @@ body {
   animation: subtle-glow 3s ease-in-out infinite;
 }
 
-/* Print styling for MCA Research Report export */
+/* Print styling for Interview Report export */
 @media print {
   body {
     background: #ffffff !important;
