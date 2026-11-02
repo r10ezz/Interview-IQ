@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateInterviewQuestions } from '@/lib/gemini';
-import { CandidateAnalysis, DifficultyLevel, InterviewType } from '@/types/interview';
-
+import { generateInterviewQuestions, generateDynamicCodingChallenges } from '@/lib/gemini';
+import { CandidateAnalysis, DifficultyLevel, InterviewType, InterviewRoundType } from '@/types/interview';
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,6 +9,7 @@ export async function POST(req: NextRequest) {
       resumeText,
       jobDescription,
       candidateAnalysis,
+      selectedRounds = ['foundation', 'coding', 'behavioral'],
       interviewType = 'mixed',
       difficulty = 'intermediate',
       interviewLength = 5,
@@ -23,30 +23,63 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const count = typeof interviewLength === 'number' ? Math.min(10, Math.max(3, interviewLength)) : 5;
+    const rounds = (Array.isArray(selectedRounds) && selectedRounds.length > 0)
+      ? selectedRounds as InterviewRoundType[]
+      : ['foundation', 'coding', 'behavioral'] as InterviewRoundType[];
 
-    const { questions, source } = await generateInterviewQuestions(
-      candidateAnalysis as CandidateAnalysis,
-      resumeText,
-      jobDescription,
-      interviewType as InterviewType,
-      difficulty as DifficultyLevel,
-      count,
-      customApiKey
-    );
+    const count = typeof interviewLength === 'number' ? Math.min(10, Math.max(2, interviewLength)) : 5;
+
+    // 1. Generate verbal questions if foundation or behavioral rounds are selected
+    let questions: any[] = [];
+    let questionSource = 'gemini';
+
+    const hasVerbal = rounds.includes('foundation') || rounds.includes('behavioral');
+    if (hasVerbal) {
+      const qRes = await generateInterviewQuestions(
+        candidateAnalysis as CandidateAnalysis,
+        resumeText,
+        jobDescription,
+        interviewType as InterviewType,
+        difficulty as DifficultyLevel,
+        count,
+        customApiKey,
+        rounds
+      );
+      questions = qRes.questions;
+      questionSource = qRes.source;
+    }
+
+    // 2. Generate role-specific LeetCode DSA challenges if coding round is selected
+    let codingChallenges: any[] = [];
+    let codingSource = 'gemini';
+
+    if (rounds.includes('coding')) {
+      const cRes = await generateDynamicCodingChallenges(
+        candidateAnalysis as CandidateAnalysis,
+        jobDescription,
+        resumeText,
+        difficulty as DifficultyLevel,
+        customApiKey
+      );
+      codingChallenges = cRes.challenges;
+      codingSource = cRes.source;
+    }
 
     return NextResponse.json({
       success: true,
       questions,
-      initialQuestion: questions[0],
+      codingChallenges,
+      selectedRounds: rounds,
+      initialQuestion: questions[0] || null,
       totalQuestions: questions.length,
       sessionContext: {
+        selectedRounds: rounds,
         interviewType,
         initialDifficulty: difficulty,
         candidateName: candidateAnalysis.candidateName,
         createdAt: new Date().toISOString(),
       },
-      source,
+      source: questionSource === 'fallback' && codingSource === 'fallback' ? 'fallback' : 'gemini',
     });
   } catch (error) {
     console.error('Error in /api/interview/start:', error);

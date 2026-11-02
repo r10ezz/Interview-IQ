@@ -7,6 +7,7 @@ import {
   DifficultyLevel,
   InterviewType,
   CodingSubmission,
+  InterviewRoundType,
 } from '@/types/interview';
 
 // Common technical and English words to detect coherent speech vs random keystrokes
@@ -172,7 +173,8 @@ export function generateFallbackQuestions(
   analysis: CandidateAnalysis,
   interviewType: InterviewType,
   difficulty: DifficultyLevel,
-  count: number = 3
+  count: number = 3,
+  selectedRounds: InterviewRoundType[] = ['foundation', 'behavioral']
 ): InterviewQuestion[] {
   const skills = [
     ...analysis.matchingSkills,
@@ -182,22 +184,26 @@ export function generateFallbackQuestions(
 
   const primarySkill = skills[0] || 'JavaScript & React';
   const secondarySkill = skills[1] || 'Node.js & Backend Architecture';
-  const dataSkill = skills[2] || 'PostgreSQL & Databases';
   const topProject = analysis.projects[0]?.name || 'Primary Production Project';
 
-  const bank: InterviewQuestion[] = [
+  const isFoundation = selectedRounds.includes('foundation');
+  const isBehavioral = selectedRounds.includes('behavioral');
+
+  const foundationQuestions: InterviewQuestion[] = [
     {
-      id: 'q1',
+      id: 'q-fnd-1',
+      roundType: 'foundation',
       skillStage: `Stage 1: Core Fundamentals & Most-Asked Concepts`,
       type: 'fundamental',
       category: `${primarySkill} Fundamentals`,
       targetSkillOrProject: primarySkill,
       difficulty: 'beginner',
       suggestedDurationSeconds: 120,
-      text: `Let's start with foundational concepts. In ${primarySkill}, can you explain the JavaScript Event Loop, the difference between microtasks and macrotasks, and how asynchronous operations (Promises vs setTimeout) are prioritized during execution?`,
+      text: `${analysis.candidateName}, let's start with foundational concepts. In ${primarySkill}, can you explain the JavaScript Event Loop, the difference between microtasks and macrotasks, and how asynchronous operations (Promises vs setTimeout) are prioritized during execution?`,
     },
     {
-      id: 'q2',
+      id: 'q-fnd-2',
+      roundType: 'foundation',
       skillStage: `Stage 2: Applied Component Architecture & State`,
       type: 'job-requirement',
       category: `${primarySkill} Architecture`,
@@ -207,7 +213,8 @@ export function generateFallbackQuestions(
       text: `Moving to practical architecture: In a React application, what triggers a component re-render, and how do you prevent unnecessary re-render cascades across deeply nested components using memoization and custom hooks?`,
     },
     {
-      id: 'q3',
+      id: 'q-fnd-3',
+      roundType: 'foundation',
       skillStage: `Stage 3: Backend Services & API Design`,
       type: 'job-requirement',
       category: `${secondarySkill} & Microservices`,
@@ -217,7 +224,8 @@ export function generateFallbackQuestions(
       text: `Let's examine backend systems in ${secondarySkill}. When designing scalable REST or microservice APIs, how do you handle asynchronous error propagation, graceful degradation, and connection pool exhaustion under high concurrent load?`,
     },
     {
-      id: 'q4',
+      id: 'q-fnd-4',
+      roundType: 'foundation',
       skillStage: `Stage 4: Real-World Incident & Latency Triage`,
       type: 'resume-project',
       category: `Production Engineering & Bottlenecks`,
@@ -228,14 +236,45 @@ export function generateFallbackQuestions(
     }
   ];
 
-  let selected = bank;
-  if (interviewType === 'technical') {
-    selected = bank.filter(q => q.type !== 'behavioral');
-  } else if (interviewType === 'hr') {
-    selected = bank.filter(q => q.type === 'behavioral');
+  const behavioralQuestions: InterviewQuestion[] = [
+    {
+      id: 'q-beh-1',
+      roundType: 'behavioral',
+      skillStage: `Behavioral: Leadership & STAR Method`,
+      type: 'behavioral',
+      category: `Cross-functional Ownership & Conflict`,
+      targetSkillOrProject: topProject,
+      difficulty: 'intermediate',
+      suggestedDurationSeconds: 150,
+      text: `${analysis.candidateName}, reflecting on your experience with "${topProject}", describe a situation where you had a significant technical disagreement with a peer or stakeholder regarding architecture or delivery timelines. How did you structure your argument, evaluate alternatives, and achieve alignment?`
+    },
+    {
+      id: 'q-beh-2',
+      roundType: 'behavioral',
+      skillStage: `Behavioral: Production Incident Response (STAR Method)`,
+      type: 'behavioral',
+      category: `Production Crisis & Accountability`,
+      targetSkillOrProject: topProject,
+      difficulty: 'intermediate',
+      suggestedDurationSeconds: 150,
+      text: `Tell me about a high-pressure production bug or system degradation you were directly involved in resolving. What was your immediate containment strategy, how did you communicate with stakeholders, and what permanent safeguards did you implement afterward?`
+    }
+  ];
+
+  let combined: InterviewQuestion[] = [];
+  if (isFoundation && isBehavioral) {
+    const fndCount = Math.max(1, Math.ceil(count / 2));
+    const behCount = count - fndCount;
+    combined = [...foundationQuestions.slice(0, fndCount), ...behavioralQuestions.slice(0, behCount)];
+  } else if (isFoundation) {
+    combined = foundationQuestions;
+  } else if (isBehavioral) {
+    combined = behavioralQuestions;
+  } else {
+    combined = foundationQuestions;
   }
 
-  return selected.slice(0, count);
+  return combined.slice(0, count);
 }
 
 export function generateFallbackAnswerEvaluation(

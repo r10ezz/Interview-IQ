@@ -14,9 +14,12 @@ export async function POST(req: NextRequest) {
       customApiKey,
     } = body;
 
-    if (!interviewHistory || !Array.isArray(interviewHistory) || interviewHistory.length === 0) {
+    if (
+      (!interviewHistory || !Array.isArray(interviewHistory) || interviewHistory.length === 0) &&
+      (!codingSubmissions || !Array.isArray(codingSubmissions) || codingSubmissions.length === 0)
+    ) {
       return NextResponse.json(
-        { error: 'Cannot evaluate empty interview history.' },
+        { error: 'Cannot evaluate empty interview history or coding submissions.' },
         { status: 400 }
       );
     }

@@ -20,6 +20,8 @@ import {
   InterviewSetupConfig,
   DifficultyLevel,
   CodingSubmission,
+  CodingChallenge,
+  InterviewRoundType,
 } from '@/types/interview';
 import { SAMPLE_PRESETS } from '@/lib/sample-data';
 import { DEFAULT_CODING_CHALLENGES } from '@/lib/coding-challenges';
@@ -47,6 +49,7 @@ export default function Home() {
   const [interviewHistory, setInterviewHistory] = useState<InterviewExchange[]>([]);
 
   // Coding round state
+  const [codingChallenges, setCodingChallenges] = useState<CodingChallenge[]>([]);
   const [codingSubmissions, setCodingSubmissions] = useState<CodingSubmission[]>([]);
 
   // Final evaluation state
@@ -86,6 +89,7 @@ export default function Home() {
     setCurrentQuestion(null);
     setCurrentQuestionIndex(0);
     setInterviewHistory([]);
+    setCodingChallenges([]);
     setCodingSubmissions([]);
     setFinalReport(null);
   };
@@ -97,6 +101,7 @@ export default function Home() {
       resumeText: preset.resumeText,
       resumeFileName: preset.resumeFileName,
       jobDescription: preset.jobDescription,
+      selectedRounds: ['foundation', 'coding', 'behavioral'],
       interviewType: preset.interviewType,
       difficulty: preset.difficulty,
       questionCount: 5,
@@ -166,6 +171,8 @@ export default function Home() {
     setLoadingMessage('AI Interviewer is formulating adaptive questions...');
 
     try {
+      const selectedRounds = setupConfig.selectedRounds || ['foundation', 'coding', 'behavioral'];
+
       const res = await fetch('/api/interview/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -173,6 +180,7 @@ export default function Home() {
           resumeText: setupConfig.resumeText,
           jobDescription: setupConfig.jobDescription,
           candidateAnalysis,
+          selectedRounds,
           interviewType: setupConfig.interviewType,
           difficulty: setupConfig.difficulty,
           interviewLength: setupConfig.questionCount,
@@ -185,12 +193,22 @@ export default function Home() {
         throw new Error(data.error || 'Failed to start interview.');
       }
 
-      setAllQuestions(data.questions);
-      setCurrentQuestion(data.initialQuestion || data.questions[0]);
-      setCurrentQuestionIndex(0);
-      setCurrentDifficulty(setupConfig.difficulty);
+      if (data.codingChallenges && data.codingChallenges.length > 0) {
+        setCodingChallenges(data.codingChallenges);
+      }
+
+      setAllQuestions(data.questions || []);
       setInterviewHistory([]);
-      setCurrentStep('interview');
+
+      // If user selected ONLY coding round:
+      if (selectedRounds.length === 1 && selectedRounds[0] === 'coding') {
+        setCurrentStep('coding');
+      } else {
+        setCurrentQuestion(data.initialQuestion || data.questions?.[0]);
+        setCurrentQuestionIndex(0);
+        setCurrentDifficulty(setupConfig.difficulty);
+        setCurrentStep('interview');
+      }
     } catch (err) {
       console.error('Start interview error:', err);
       alert(err instanceof Error ? err.message : 'Failed to launch interview.');
@@ -281,12 +299,12 @@ export default function Home() {
 
   // Step 5: Final evaluation generation
   const handleGenerateFinalEvaluation = async (overrideSubmissions?: CodingSubmission[]) => {
-    if (!candidateAnalysis || !setupConfig || interviewHistory.length === 0) {
+    const subsToSubmit = overrideSubmissions || codingSubmissions;
+
+    if (!candidateAnalysis || !setupConfig || (interviewHistory.length === 0 && subsToSubmit.length === 0)) {
       alert('Cannot evaluate empty interview.');
       return;
     }
-
-    const subsToSubmit = overrideSubmissions || codingSubmissions;
 
     setIsLoading(true);
     setLoadingMessage('Lead Evaluator synthesizing multi-rubric performance report...');
@@ -368,11 +386,15 @@ export default function Home() {
           <InterviewConsole
             currentQuestion={currentQuestion}
             questionIndex={currentQuestionIndex}
-            totalQuestions={setupConfig.questionCount}
+            totalQuestions={allQuestions.length || setupConfig.questionCount}
             currentDifficulty={currentDifficulty}
             allQuestions={allQuestions}
             onSubmitAnswer={handleSubmitAnswer}
-            onProceedToCoding={() => setCurrentStep('coding')}
+            onProceedToCoding={
+              setupConfig.selectedRounds?.includes('coding')
+                ? () => setCurrentStep('coding')
+                : undefined
+            }
             onFinishInterview={() => handleGenerateFinalEvaluation()}
             isEvaluating={isEvaluatingAnswer}
             candidateName={candidateAnalysis?.candidateName || 'Candidate'}
@@ -381,7 +403,7 @@ export default function Home() {
 
         {currentStep === 'coding' && (
           <CodingRound
-            challenges={DEFAULT_CODING_CHALLENGES}
+            challenges={codingChallenges.length > 0 ? codingChallenges : DEFAULT_CODING_CHALLENGES}
             onCompleteCodingRound={handleCompleteCodingRound}
             candidateName={candidateAnalysis?.candidateName || 'Candidate'}
           />

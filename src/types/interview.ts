@@ -1,6 +1,7 @@
 export type InterviewType = 'technical' | 'hr' | 'mixed';
 export type DifficultyLevel = 'beginner' | 'intermediate' | 'advanced';
 export type QuestionType = 'job-requirement' | 'resume-project' | 'behavioral' | 'follow-up' | 'fundamental';
+export type InterviewRoundType = 'foundation' | 'coding' | 'behavioral';
 
 export interface ProjectInfo {
   name: string;
@@ -28,6 +29,7 @@ export interface InterviewQuestion {
   category: string;
   targetSkillOrProject: string;
   skillStage?: string; // e.g. "Stage 1: Core Fundamentals & Syntax", "Stage 2: Architecture", etc.
+  roundType?: InterviewRoundType;
   difficulty: DifficultyLevel;
   followUpContext?: string;
   suggestedDurationSeconds?: number;
@@ -59,12 +61,21 @@ export interface CodingTestCase {
   explanation?: string;
 }
 
+export interface CodingChallengeExample {
+  input: string;
+  output: string;
+  explanation?: string;
+}
+
 export interface CodingChallenge {
   id: string;
   title: string;
   difficulty: 'Easy' | 'Medium' | 'Hard';
-  skillCategory: string; // e.g. "React / Hooks", "Node.js / Async"
+  topicTags?: string[];
+  skillCategory: string; // e.g. "DSA / Algorithms", "System Patterns"
   description: string;
+  examples?: CodingChallengeExample[];
+  constraints?: string[];
   starterCode: string;
   language: string; // 'typescript' | 'javascript' | 'python'
   sampleTestCases: CodingTestCase[];
@@ -129,6 +140,7 @@ export interface FinalEvaluationReport {
   communicationClarity: number;
   codingScore?: number;
   codingSubmissions?: CodingSubmission[];
+  selectedRounds?: InterviewRoundType[];
   hiringRecommendation: 'Strong Hire' | 'Hire' | 'Borderline / Needs Follow-up' | 'Not Ready Yet';
   performanceSummary: string;
   strengths: string[];
@@ -144,6 +156,7 @@ export interface InterviewSetupConfig {
   resumeText: string;
   resumeFileName?: string;
   jobDescription: string;
+  selectedRounds?: InterviewRoundType[]; // ['foundation', 'coding', 'behavioral']
   interviewType: InterviewType;
   difficulty: DifficultyLevel;
   questionCount: number;

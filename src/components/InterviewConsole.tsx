@@ -440,7 +440,7 @@ export default function InterviewConsole({
                   onClick={onProceedToCoding}
                   className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-white bg-violet-600 hover:bg-violet-500 shadow-md transition-all"
                 >
-                  <span>Proceed to Live Coding Round (2 Challenges)</span>
+                  <span>Proceed to Live Coding Round (LeetCode Style)</span>
                   <Code2 className="w-4 h-4" />
                 </button>
               ) : (

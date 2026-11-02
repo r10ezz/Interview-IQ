@@ -8,6 +8,8 @@ import {
   DifficultyLevel,
   InterviewType,
   CodingSubmission,
+  CodingChallenge,
+  InterviewRoundType,
 } from '@/types/interview';
 import {
   generateFallbackAnalysis,
@@ -15,6 +17,7 @@ import {
   generateFallbackAnswerEvaluation,
   generateFallbackFinalReport,
 } from './fallback-data';
+import { getRoleBasedCodingChallenges } from './coding-challenges';
 
 // Available stable Gemini models in order of priority (Fastest first)
 const GEMINI_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest'];
@@ -137,7 +140,7 @@ ${jobDescription.slice(0, 5000)}
 }
 
 /**
- * Generates personalized initial interview questions.
+ * Generates personalized interview questions based on Resume, JD, and selected rounds.
  */
 export async function generateInterviewQuestions(
   analysis: CandidateAnalysis,
@@ -146,16 +149,20 @@ export async function generateInterviewQuestions(
   interviewType: InterviewType,
   difficulty: DifficultyLevel,
   count: number = 5,
-  customApiKey?: string
+  customApiKey?: string,
+  selectedRounds: InterviewRoundType[] = ['foundation', 'behavioral']
 ): Promise<{ questions: InterviewQuestion[]; source: 'gemini' | 'fallback' }> {
   const client = getGeminiClient(customApiKey);
 
   if (!client) {
     return {
-      questions: generateFallbackQuestions(analysis, interviewType, difficulty, count),
+      questions: generateFallbackQuestions(analysis, interviewType, difficulty, count, selectedRounds),
       source: 'fallback',
     };
   }
+
+  const isFoundation = selectedRounds.includes('foundation');
+  const isBehavioral = selectedRounds.includes('behavioral');
 
   for (const modelName of GEMINI_MODELS) {
     try {
@@ -167,37 +174,55 @@ export async function generateInterviewQuestions(
         },
       });
 
-      const prompt = `You are a Principal Engineering Interviewer conducting a realistic, progressive technical interview.
-Generate EXACTLY ${count} questions organized into progressive SKILL STAGES:
+      const prompt = `You are a Principal Technical Interviewer and Hiring Committee Lead conducting a realistic, high-signal mock interview (like Pramp or Aced).
+You are evaluating candidate "${analysis.candidateName}" for the target role detailed in the Job Description.
 
-PROGRESSION STAGES:
-- QUESTION 1 MUST BE FOUNDATIONAL: "Stage 1: Core Fundamentals & Most-Asked Questions". Focus on core language/runtime fundamentals (e.g. JavaScript Event Loop, closures, prototype chain, React re-render mechanics, memory lifecycle, async microtasks).
-- QUESTION 2: "Stage 2: Applied Component / Service Architecture". Focus on designing scalable APIs, state management, or microservice boundaries.
-- QUESTION 3+: "Stage 3+: Production Scenarios, Bottlenecks & Incident Triage". Focus on high-concurrency traffic spikes, latency profiling, and distributed failure mitigation.
-
-STRICT RULES:
-- Frame each question conversationally, as an interviewer addressing the candidate directly.
-- Include concrete technical terms, but start from core fundamentals before jumping to complex edge-cases.
-
-Return strictly a JSON array of questions with this schema:
-[
-  {
-    "id": "q1",
-    "skillStage": "Stage 1: Core Fundamentals & Most-Asked Concepts",
-    "text": "The exact interview question",
-    "type": "fundamental" | "job-requirement" | "resume-project",
-    "category": "e.g. JavaScript Runtime / Event Loop",
-    "targetSkillOrProject": "e.g. JavaScript & React Core",
-    "difficulty": "beginner",
-    "suggestedDurationSeconds": 120
-  }
-]
-
-CANDIDATE ANALYSIS:
-${JSON.stringify(analysis, null, 2).slice(0, 3000)}
+CANDIDATE RESUME:
+${resumeText.slice(0, 3000)}
 
 JOB DESCRIPTION:
 ${jobDescription.slice(0, 3000)}
+
+CANDIDATE ANALYSIS:
+- Skills: ${analysis.technicalSkills.join(', ')}
+- Matching Skills: ${analysis.matchingSkills.join(', ')}
+- Projects: ${analysis.projects.map(p => `${p.name} (${p.techStack.join(', ')})`).join('; ')}
+
+SELECTED ROUNDS:
+${selectedRounds.join(', ')}
+
+INSTRUCTIONS (GENERATE EXACTLY ${count} QUESTIONS):
+${isFoundation && isBehavioral ? `
+- SPLIT QUESTIONS BETWEEN FOUNDATION & BEHAVIORAL:
+  1. FOUNDATION ROUND (First half): Focus on core language runtime, memory models, framework mechanics, and the MOST-ASKED foundational technical questions for this exact role (e.g. Event Loop, closures, reconciliation, connection pooling, indexing).
+  2. BEHAVIORAL ROUND (Second half): Focus on the STAR method (Situation, Task, Action, Result). Formulate questions that directly reference the candidate's actual projects from their resume (e.g. "${analysis.projects[0]?.name || 'past projects'}"), probing technical disagreements, production crises, trade-offs under pressure, and cross-functional ownership.
+` : isFoundation ? `
+- ALL QUESTIONS MUST BE TECHNICAL & FOUNDATIONAL:
+  * Start with most-asked language/runtime fundamentals for this role (e.g. memory model, async execution, closures, reconciliation).
+  * Advance to practical component/service architecture and production trade-offs.
+` : `
+- ALL QUESTIONS MUST BE BEHAVIORAL & PROJECT-FOCUSED (STAR Method):
+  * Directly tie questions to the projects, architecture, and responsibilities detailed in the candidate's resume and the leadership/ownership expectations in the Job Description.
+`}
+
+CRITICAL REALISM:
+- Address the candidate naturally by name ("${analysis.candidateName}").
+- Frame each question conversationally, as an interviewer addressing the candidate directly.
+
+Format strictly as a JSON array of questions with this schema:
+[
+  {
+    "id": "q1",
+    "roundType": "foundation" | "behavioral",
+    "skillStage": "e.g. Stage 1: Core Fundamentals & Syntax" or "Behavioral: STAR Method & Project Leadership",
+    "text": "The exact interview question addressing the candidate directly",
+    "type": "fundamental" | "job-requirement" | "resume-project" | "behavioral",
+    "category": "e.g. JavaScript Runtime / Event Loop or Project Architecture",
+    "targetSkillOrProject": "e.g. React & Node.js or ${analysis.projects[0]?.name || 'Primary Project'}",
+    "difficulty": "${difficulty}",
+    "suggestedDurationSeconds": 120
+  }
+]
 `;
 
       const result = await model.generateContent(prompt);
@@ -209,6 +234,7 @@ ${jobDescription.slice(0, 3000)}
             ...q,
             id: q.id || `q-${idx + 1}`,
             difficulty: q.difficulty || difficulty,
+            roundType: q.roundType || (idx < Math.ceil(count / 2) && isFoundation ? 'foundation' : 'behavioral'),
           })),
           source: 'gemini',
         };
@@ -219,7 +245,108 @@ ${jobDescription.slice(0, 3000)}
   }
 
   return {
-    questions: generateFallbackQuestions(analysis, interviewType, difficulty, count),
+    questions: generateFallbackQuestions(analysis, interviewType, difficulty, count, selectedRounds),
+    source: 'fallback',
+  };
+}
+
+/**
+ * Generates role-specific, most-asked LeetCode / HackerRank style DSA coding challenges.
+ */
+export async function generateDynamicCodingChallenges(
+  analysis: CandidateAnalysis,
+  jobDescription: string,
+  resumeText: string,
+  difficulty: DifficultyLevel = 'intermediate',
+  customApiKey?: string
+): Promise<{ challenges: CodingChallenge[]; source: 'gemini' | 'fallback' }> {
+  const client = getGeminiClient(customApiKey);
+
+  if (!client) {
+    return {
+      challenges: getRoleBasedCodingChallenges(jobDescription, resumeText),
+      source: 'fallback',
+    };
+  }
+
+  for (const modelName of GEMINI_MODELS) {
+    try {
+      const model = client.getGenerativeModel({
+        model: modelName,
+        generationConfig: {
+          responseMimeType: 'application/json',
+          temperature: 0.2,
+        },
+      });
+
+      const prompt = `You are a Principal Software Engineer and LeetCode / HackerRank problem setter.
+Generate EXACTLY 2 role-specific, most-asked Data Structures & Algorithms (DSA) or System Algorithm coding problems for this candidate and target role.
+
+CANDIDATE:
+- Candidate Name: ${analysis.candidateName}
+- Target Role Skills: ${analysis.matchingSkills.join(', ')}
+${resumeText.slice(0, 1500)}
+
+JOB DESCRIPTION:
+${jobDescription.slice(0, 1500)}
+
+CRITERIA:
+- The 2 problems MUST be the MOST-ASKED coding interview problems for this specific role:
+  * If Frontend/FullStack: problems like LRU Cache, Two Sum, Longest Substring Without Repeating Characters, Custom Debounce/Throttle, Flatten Deep Object, Valid Parentheses.
+  * If Backend/Systems: problems like Token Bucket Rate Limiter, LRU Cache, Merge Intervals, Course Schedule (Graph/Topo-sort), Top-K Frequent Elements.
+- Format each problem in professional LeetCode / HackerRank style with Example 1, Example 2, and realistic Constraints.
+- Include starter code in TypeScript with complete type annotations.
+- Include 2-3 sample test cases with input, expectedOutput, and explanation.
+
+Return strictly a JSON array matching this schema:
+[
+  {
+    "id": "dsa-1",
+    "title": "Problem Title (e.g. LRU Cache)",
+    "difficulty": "Easy" | "Medium" | "Hard",
+    "topicTags": ["Hash Table", "Two Pointers"],
+    "skillCategory": "Data Structures & Algorithms",
+    "description": "Clear problem statement with requirements",
+    "examples": [
+      {
+        "input": "nums = [2, 7, 11, 15], target = 9",
+        "output": "[0, 1]",
+        "explanation": "nums[0] + nums[1] == 9"
+      }
+    ],
+    "constraints": [
+      "1 <= nums.length <= 10^5",
+      "Time Complexity: O(n), Space: O(n)"
+    ],
+    "starterCode": "function solve(...) { ... }",
+    "language": "typescript",
+    "sampleTestCases": [
+      {
+        "input": "...",
+        "expectedOutput": "...",
+        "explanation": "..."
+      }
+    ]
+  }
+]
+`;
+
+      const result = await model.generateContent(prompt);
+      const parsed = JSON.parse(cleanJsonText(result.response.text())) as CodingChallenge[];
+
+      if (Array.isArray(parsed) && parsed.length >= 2) {
+        return {
+          challenges: parsed.slice(0, 2),
+          source: 'gemini',
+        };
+      }
+    } catch (err) {
+      console.warn(`[InterviewIQ] Gemini generateDynamicCodingChallenges failed on ${modelName}:`, err instanceof Error ? err.message : err);
+    }
+  }
+
+  return {
+    challenges: getRoleBasedCodingChallenges(jobDescription, resumeText),
     source: 'fallback',
   };
 }
