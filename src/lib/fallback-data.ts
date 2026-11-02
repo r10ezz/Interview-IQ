@@ -312,20 +312,29 @@ export function generateFallbackAnswerEvaluation(
   let depth = 40;
   let clarity = 55;
 
-  if (matchedTechTerms.length === 0 && wordCount > 15) {
-    // Off-topic or non-technical response
-    score = 15;
-    correctness = 10;
-    relevance = 15;
-    depth = 10;
-    clarity = 40;
+  if (matchedTechTerms.length === 0) {
+    if (wordCount < 15) {
+      // Trivial, empty, or non-technical response
+      score = 0;
+      correctness = 0;
+      relevance = 0;
+      depth = 0;
+      clarity = 0;
+    } else {
+      // Off-topic or non-technical response
+      score = 10;
+      correctness = 5;
+      relevance = 10;
+      depth = 5;
+      clarity = 30;
+    }
   } else if (wordCount < 15) {
-    // Too brief / superficial
-    score = 30;
-    correctness = 35;
-    relevance = 45;
-    depth = 20;
-    clarity = 35;
+    // Has a tech word but too brief / superficial
+    score = 25;
+    correctness = 30;
+    relevance = 40;
+    depth = 15;
+    clarity = 30;
   } else {
     // Base score on technical density
     score = 65;
@@ -380,7 +389,9 @@ export function generateFallbackAnswerEvaluation(
     };
   }
 
-  const feedbackSummary = score < 20
+  const feedbackSummary = score === 0
+    ? 'Answer Rejected: The response contains no recognizable technical substance or relevant engineering concepts.'
+    : score < 20
     ? 'Off-Topic / Non-Technical: The response does not address the core engineering principles or requirements asked in the question.'
     : score < 45
     ? 'Superficial Response: The answer is too brief or generic. It lacks architectural specifics, trade-off analysis, or concrete metrics.'

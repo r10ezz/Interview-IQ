@@ -16,7 +16,7 @@ import {
 } from './fallback-data';
 
 // Available stable Gemini models in order of priority (Fastest first)
-const GEMINI_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-3.8-pro', 'gemini-flash-latest'];
+const GEMINI_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest'];
 
 function getGeminiClient(customApiKey?: string): GoogleGenerativeAI | null {
   const key = customApiKey || process.env.GEMINI_API_KEY;
