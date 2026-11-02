@@ -15,6 +15,9 @@ import {
   generateFallbackFinalReport,
 } from './fallback-data';
 
+// Available stable Gemini models in order of priority
+const GEMINI_MODELS = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'];
+
 function getGeminiClient(customApiKey?: string): GoogleGenerativeAI | null {
   const key = customApiKey || process.env.GEMINI_API_KEY;
   if (!key || key.trim() === '' || key === 'your_gemini_api_key_here') {
@@ -30,6 +33,25 @@ function cleanJsonText(raw: string): string {
     cleaned = cleaned.replace(/^```(?:json)?\n?/, '').replace(/```$/, '').trim();
   }
   return cleaned;
+}
+
+/**
+ * Validates a Gemini API Key by making a minimal request.
+ */
+export async function validateApiKey(apiKey: string): Promise<{ valid: boolean; message: string }> {
+  try {
+    const client = new GoogleGenerativeAI(apiKey.trim());
+    const model = client.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const result = await model.generateContent('Say hello in 1 word.');
+    const text = result.response.text();
+    if (text) {
+      return { valid: true, message: 'Google Gemini 1.5 Flash connected successfully!' };
+    }
+    return { valid: false, message: 'No response received from Gemini.' };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Invalid API key or network error';
+    return { valid: false, message: msg };
+  }
 }
 
 /**
@@ -50,63 +72,67 @@ export async function analyzeCandidate(
     };
   }
 
-  try {
-    const model = client.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      generationConfig: {
-        responseMimeType: 'application/json',
-        temperature: 0.2,
-      },
-    });
+  // Attempt models in order
+  for (const modelName of GEMINI_MODELS) {
+    try {
+      const model = client.getGenerativeModel({
+        model: modelName,
+        generationConfig: {
+          responseMimeType: 'application/json',
+          temperature: 0.2,
+        },
+      });
 
-    const prompt = `You are an expert AI Technical Recruiter and MCA Research Evaluator analyzing candidate-job alignment.
-Analyze the provided RESUME and JOB DESCRIPTION.
+      const prompt = `You are a Principal Technical Recruiter and Academic Research Evaluator analyzing candidate-job alignment.
+Analyze the provided RESUME and JOB DESCRIPTION in high depth.
 
 Extract structured data strictly as a valid JSON object with this exact schema:
 {
   "candidateName": "Extracted name or Candidate",
-  "experienceSummary": "2-3 sentence professional summary highlighting candidate background and domain",
+  "experienceSummary": "2-3 sentence technical summary highlighting candidate architectural background, stack depth, and scale",
   "technicalSkills": ["skill1", "skill2", ...],
   "projects": [
     {
       "name": "Project Name",
-      "description": "Brief summary of problem solved and impact",
+      "description": "Concrete technical summary of problem solved, metrics achieved, and architecture",
       "techStack": ["tech1", "tech2"]
     }
   ],
-  "jobRequirements": ["key requirement 1", "key requirement 2", ...],
-  "matchingSkills": ["skills present in BOTH resume and job requirements"],
-  "missingSkills": ["skills required by job but absent/weak in resume"],
+  "jobRequirements": ["core requirement 1", "core requirement 2", ...],
+  "matchingSkills": ["skills substantiated in BOTH resume and job requirements"],
+  "missingSkills": ["skills explicitly required by job but absent/unsubstantiated in resume"],
   "matchScore": 78, // Integer 0 to 100 based on rigorous semantic skill alignment
   "recommendedTopics": ["topic 1 to test in interview", "topic 2", "topic 3"],
-  "confidenceAssessment": "Brief explanation of how well candidate aligns with this specific job role"
+  "confidenceAssessment": "Evaluation of candidate alignment with this specific role, noting strengths and risk areas"
 }
 
 RESUME TEXT:
-${resumeText.slice(0, 7000)}
+${resumeText.slice(0, 8000)}
 
 JOB DESCRIPTION:
-${jobDescription.slice(0, 4000)}
+${jobDescription.slice(0, 5000)}
 `;
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
-    const parsed = JSON.parse(cleanJsonText(responseText)) as CandidateAnalysis;
+      const result = await model.generateContent(prompt);
+      const responseText = result.response.text();
+      const parsed = JSON.parse(cleanJsonText(responseText)) as CandidateAnalysis;
 
-    return {
-      analysis: {
-        ...parsed,
-        matchScore: typeof parsed.matchScore === 'number' ? Math.min(100, Math.max(0, parsed.matchScore)) : 75,
-      },
-      source: 'gemini',
-    };
-  } catch (err) {
-    console.error('[InterviewIQ] Gemini analyzeCandidate error:', err);
-    return {
-      analysis: generateFallbackAnalysis(resumeText, jobDescription),
-      source: 'fallback',
-    };
+      return {
+        analysis: {
+          ...parsed,
+          matchScore: typeof parsed.matchScore === 'number' ? Math.min(100, Math.max(0, parsed.matchScore)) : 75,
+        },
+        source: 'gemini',
+      };
+    } catch (err) {
+      console.warn(`[InterviewIQ] Gemini analyzeCandidate failed on ${modelName}:`, err instanceof Error ? err.message : err);
+    }
   }
+
+  return {
+    analysis: generateFallbackAnalysis(resumeText, jobDescription),
+    source: 'fallback',
+  };
 }
 
 /**
@@ -130,26 +156,31 @@ export async function generateInterviewQuestions(
     };
   }
 
-  try {
-    const model = client.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      generationConfig: {
-        responseMimeType: 'application/json',
-        temperature: 0.3,
-      },
-    });
+  for (const modelName of GEMINI_MODELS) {
+    try {
+      const model = client.getGenerativeModel({
+        model: modelName,
+        generationConfig: {
+          responseMimeType: 'application/json',
+          temperature: 0.3,
+        },
+      });
 
-    const prompt = `You are a Principal Software Engineering Interviewer conducting an adaptive mock interview.
-Based on the candidate's analysis, resume, and job description, generate EXACTLY ${count} personalized interview questions.
+      const prompt = `You are a Principal Engineering Interviewer conducting a rigorous, non-generic mock interview.
+Based on the candidate's analysis, resume, and job description, formulate EXACTLY ${count} deeply personalized interview questions.
 
-Question distribution requirements:
-${interviewType === 'technical' ? `- All ${count} questions must be Technical (architecture, coding design, debugging, systems)` : ''}
-${interviewType === 'hr' ? `- All ${count} questions must be Behavioral & Leadership (STAR method, teamwork, conflict, culture)` : ''}
-${interviewType === 'mixed' ? `- 2 questions strictly targeting key job requirements
-- 2 questions strictly targeting the candidate's actual projects/resume claims
-- 1 behavioral / situational question` : ''}
+IMPORTANT RULES FOR QUESTIONS:
+- NEVER ask generic questions like "Tell me about React" or "How do you handle errors?".
+- ALWAYS anchor questions to CONCRETE technologies, projects, metrics, or architectural constraints mentioned in the resume and job requirements.
+- Example of good question: "In your resume, you described building a real-time analytics dashboard with Next.js and Redis serving 120k MAU. When caching dynamic widgets with varying permission scopes, how specifically did you prevent cache poisoning across tenants while keeping cache invalidation latency under 50ms?"
+- Make questions challenging and realistic for difficulty level: ${difficulty.toUpperCase()}.
 
-Current target difficulty: ${difficulty.toUpperCase()}
+Question distribution:
+${interviewType === 'technical' ? `- All ${count} questions must be Technical (System design, performance bottlenecks, race conditions, architecture)` : ''}
+${interviewType === 'hr' ? `- All ${count} questions must be Behavioral & Leadership (STAR method, trade-offs, disagreements, accountability)` : ''}
+${interviewType === 'mixed' ? `- 2 questions strictly targeting key job requirements & system design
+- 2 questions strictly targeting the candidate's actual projects/claims from their resume
+- 1 behavioral / leadership question targeting engineering decision-making` : ''}
 
 Return strictly a JSON array of questions with this schema:
 [
@@ -157,46 +188,46 @@ Return strictly a JSON array of questions with this schema:
     "id": "q1",
     "text": "The exact interview question text",
     "type": "job-requirement" | "resume-project" | "behavioral",
-    "category": "e.g. System Design / State Management / Distributed Systems",
-    "targetSkillOrProject": "e.g. Redis Caching / DevFlow Kanban / Conflict Resolution",
+    "category": "e.g. Distributed Caching / State Synchronization / Concurrency Control",
+    "targetSkillOrProject": "e.g. Redis Caching / DevFlow Kanban",
     "difficulty": "${difficulty}",
     "suggestedDurationSeconds": 120
   }
 ]
 
 CANDIDATE ANALYSIS:
-${JSON.stringify(analysis, null, 2).slice(0, 2500)}
+${JSON.stringify(analysis, null, 2).slice(0, 3000)}
 
 JOB DESCRIPTION:
-${jobDescription.slice(0, 2500)}
+${jobDescription.slice(0, 3000)}
 `;
 
-    const result = await model.generateContent(prompt);
-    const parsed = JSON.parse(cleanJsonText(result.response.text())) as InterviewQuestion[];
+      const result = await model.generateContent(prompt);
+      const parsed = JSON.parse(cleanJsonText(result.response.text())) as InterviewQuestion[];
 
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      return {
-        questions: parsed.slice(0, count).map((q, idx) => ({
-          ...q,
-          id: q.id || `q-${idx + 1}`,
-          difficulty: q.difficulty || difficulty,
-        })),
-        source: 'gemini',
-      };
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return {
+          questions: parsed.slice(0, count).map((q, idx) => ({
+            ...q,
+            id: q.id || `q-${idx + 1}`,
+            difficulty: q.difficulty || difficulty,
+          })),
+          source: 'gemini',
+        };
+      }
+    } catch (err) {
+      console.warn(`[InterviewIQ] Gemini generateInterviewQuestions failed on ${modelName}:`, err instanceof Error ? err.message : err);
     }
-
-    throw new Error('Unexpected question format returned');
-  } catch (err) {
-    console.error('[InterviewIQ] Gemini generateInterviewQuestions error:', err);
-    return {
-      questions: generateFallbackQuestions(analysis, interviewType, difficulty, count),
-      source: 'fallback',
-    };
   }
+
+  return {
+    questions: generateFallbackQuestions(analysis, interviewType, difficulty, count),
+    source: 'fallback',
+  };
 }
 
 /**
- * Evaluates candidate answer and determines adaptive next step / follow-up.
+ * Evaluates candidate answer with strict academic rubric and gibberish rejection.
  */
 export async function evaluateCandidateAnswer(
   currentQuestion: InterviewQuestion,
@@ -219,58 +250,80 @@ export async function evaluateCandidateAnswer(
     return { ...res, source: 'fallback' };
   }
 
-  try {
-    const model = client.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      generationConfig: {
-        responseMimeType: 'application/json',
-        temperature: 0.2,
-      },
-    });
+  for (const modelName of GEMINI_MODELS) {
+    try {
+      const model = client.getGenerativeModel({
+        model: modelName,
+        generationConfig: {
+          responseMimeType: 'application/json',
+          temperature: 0.2,
+        },
+      });
 
-    const prompt = `You are an adaptive interview AI evaluator.
-Evaluate the candidate's response to the given question.
+      const prompt = `You are a Principal Engineering Hiring Committee Member and strict Academic Evaluator.
+Your goal is to evaluate the candidate's response with extreme rigor, honesty, and precision.
 
-QUESTION:
+QUESTION ASKED:
 "${currentQuestion.text}"
 Category: ${currentQuestion.category}
-Difficulty: ${currentQuestion.difficulty}
+Target Skill/Project: ${currentQuestion.targetSkillOrProject}
+Current Difficulty: ${currentQuestion.difficulty}
 
-CANDIDATE ANSWER:
-"${candidateAnswer}"
+CANDIDATE'S SUBMITTED ANSWER:
+"""${candidateAnswer}"""
 
 PREVIOUS EXCHANGE COUNT: ${previousHistory.length}
 QUESTION INDEX: ${questionIndex + 1} of ${totalQuestions}
 
-Evaluate strictly according to these 5 criteria:
-1. Overall Score (0-100)
-2. Technical Correctness (0-100)
-3. Relevance (0-100)
-4. Depth & Specificity (0-100)
-5. Communication Clarity (0-100)
+CRITICAL SCORING INTEGRITY INSTRUCTIONS:
+1. GIBBERISH / RANDOM KEYSTROKES / TRIVIAL INPUTS:
+   - If the candidate submitted random characters (e.g. "asdfghjkl", "qwerty", "zzz", "abcd"), spam, incoherent non-words, or a non-serious attempt:
+     - "score": 0
+     - "technicalCorrectness": 0
+     - "relevance": 0
+     - "depth": 0
+     - "clarity": 0
+     - "quickFeedback": "Answer Rejected: The submitted text contains random keystrokes or incoherent words. Zero technical substance was demonstrated."
+     - "keyStrengths": ["None (No coherent content provided)"]
+     - "keyMissingPoints": ["A coherent explanation", "Relevant technical concepts", "Answering the prompt"]
+     - "newDifficulty": "beginner"
+     - "shouldGenerateFollowUp": false
+   - Do NOT award participation scores or be lenient with gibberish!
 
-Also determine ADAPTIVE ACTION:
-- If score >= 85 and current difficulty is not 'advanced', recommend difficulty increase.
-- If score <= 50 and current difficulty is not 'beginner', recommend difficulty decrease.
-- If candidate gave an interesting answer that left a key technical nuance or edge-case unaddressed, or if this is an MCA research depth check, you can optionally generate a contextual "followUpQuestion".
+2. OFF-TOPIC RESPONSES:
+   - If the candidate wrote coherent English but completely off-topic (e.g., discussing food or an unrelated topic):
+     - Score between 5 and 15 out of 100 with relevance <= 10.
+
+3. SUPERFICIAL / SHALLOW RESPONSES:
+   - If the candidate gave a brief, generic answer without architectural specifics or trade-offs:
+     - Score between 25 and 45 out of 100.
+
+4. GOOD / DETAILED RESPONSES:
+   - Well-structured explanation addressing core mechanics: score 70-84.
+   - Deep production-grade explanation with metrics, trade-offs, and failure handling: score 85-98.
+
+ADAPTIVE DIFFICULTY RULES:
+- If score >= 85 and difficulty is not 'advanced', scale UP to next difficulty.
+- If score <= 40 and difficulty is not 'beginner', scale DOWN to beginner.
+- If score is between 60-84 and candidate missed an interesting technical trade-off, formulate a probing "followUpQuestion".
 
 Return strictly a JSON object:
 {
   "evaluation": {
-    "score": 82,
-    "quickFeedback": "1-2 sentence immediate assessment",
-    "technicalCorrectness": 85,
-    "relevance": 90,
-    "depth": 75,
-    "clarity": 80,
+    "score": 0 to 100,
+    "quickFeedback": "Direct, honest assessment",
+    "technicalCorrectness": 0 to 100,
+    "relevance": 0 to 100,
+    "depth": 0 to 100,
+    "clarity": 0 to 100,
     "keyStrengths": ["bullet 1", "bullet 2"],
     "keyMissingPoints": ["bullet 1", "bullet 2"],
-    "idealAnswerHighlights": "What a top tier response should have covered"
+    "idealAnswerHighlights": "What an exemplary staff-level answer would contain"
   },
   "shouldGenerateFollowUp": false,
   "followUpQuestion": {
     "id": "fu-1",
-    "text": "Probing follow-up question directly addressing candidate answer",
+    "text": "Deep-dive follow-up question directly challenging candidate's prior answer",
     "type": "follow-up",
     "category": "Deep Dive Nuance",
     "targetSkillOrProject": "${currentQuestion.targetSkillOrProject}",
@@ -280,44 +333,46 @@ Return strictly a JSON object:
 }
 `;
 
-    const result = await model.generateContent(prompt);
-    const parsed = JSON.parse(cleanJsonText(result.response.text()));
+      const result = await model.generateContent(prompt);
+      const parsed = JSON.parse(cleanJsonText(result.response.text()));
 
-    const evaluation: AnswerEvaluation = {
-      score: parsed.evaluation?.score ?? 75,
-      quickFeedback: parsed.evaluation?.quickFeedback ?? 'Good response covering core principles.',
-      technicalCorrectness: parsed.evaluation?.technicalCorrectness ?? 75,
-      relevance: parsed.evaluation?.relevance ?? 80,
-      depth: parsed.evaluation?.depth ?? 70,
-      clarity: parsed.evaluation?.clarity ?? 75,
-      keyStrengths: parsed.evaluation?.keyStrengths ?? ['Good context understanding'],
-      keyMissingPoints: parsed.evaluation?.keyMissingPoints ?? ['Could provide deeper metrics'],
-      idealAnswerHighlights: parsed.evaluation?.idealAnswerHighlights ?? 'Provide architecture trade-offs and edge case mitigations.',
-    };
+      const evaluation: AnswerEvaluation = {
+        score: parsed.evaluation?.score ?? 0,
+        quickFeedback: parsed.evaluation?.quickFeedback ?? 'No evaluation provided.',
+        technicalCorrectness: parsed.evaluation?.technicalCorrectness ?? 0,
+        relevance: parsed.evaluation?.relevance ?? 0,
+        depth: parsed.evaluation?.depth ?? 0,
+        clarity: parsed.evaluation?.clarity ?? 0,
+        keyStrengths: parsed.evaluation?.keyStrengths ?? [],
+        keyMissingPoints: parsed.evaluation?.keyMissingPoints ?? [],
+        idealAnswerHighlights: parsed.evaluation?.idealAnswerHighlights ?? '',
+      };
 
-    const newDiff = (['beginner', 'intermediate', 'advanced'].includes(parsed.newDifficulty)
-      ? parsed.newDifficulty
-      : currentDifficulty) as DifficultyLevel;
+      const newDiff = (['beginner', 'intermediate', 'advanced'].includes(parsed.newDifficulty)
+        ? parsed.newDifficulty
+        : currentDifficulty) as DifficultyLevel;
 
-    const followUp = parsed.shouldGenerateFollowUp && parsed.followUpQuestion
-      ? {
-          ...parsed.followUpQuestion,
-          id: `fu-${Date.now()}`,
-          difficulty: newDiff,
-        }
-      : undefined;
+      const followUp = parsed.shouldGenerateFollowUp && parsed.followUpQuestion
+        ? {
+            ...parsed.followUpQuestion,
+            id: `fu-${Date.now()}`,
+            difficulty: newDiff,
+          }
+        : undefined;
 
-    return {
-      evaluation,
-      followUpQuestion: followUp,
-      newDifficulty: newDiff,
-      source: 'gemini',
-    };
-  } catch (err) {
-    console.error('[InterviewIQ] Gemini evaluateCandidateAnswer error:', err);
-    const res = generateFallbackAnswerEvaluation(currentQuestion, candidateAnswer, previousHistory.length);
-    return { ...res, source: 'fallback' };
+      return {
+        evaluation,
+        followUpQuestion: followUp,
+        newDifficulty: newDiff,
+        source: 'gemini',
+      };
+    } catch (err) {
+      console.warn(`[InterviewIQ] Gemini evaluateCandidateAnswer failed on ${modelName}:`, err instanceof Error ? err.message : err);
+    }
   }
+
+  const res = generateFallbackAnswerEvaluation(currentQuestion, candidateAnswer, previousHistory.length);
+  return { ...res, source: 'fallback' };
 }
 
 /**
@@ -338,34 +393,49 @@ export async function generateFinalEvaluation(
     };
   }
 
-  try {
-    const model = client.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      generationConfig: {
-        responseMimeType: 'application/json',
-        temperature: 0.2,
-      },
-    });
+  for (const modelName of GEMINI_MODELS) {
+    try {
+      const model = client.getGenerativeModel({
+        model: modelName,
+        generationConfig: {
+          responseMimeType: 'application/json',
+          temperature: 0.2,
+        },
+      });
 
-    const summaryHistory = history.map((h, i) => ({
-      index: i + 1,
-      question: h.question.text,
-      category: h.question.category,
-      difficulty: h.question.difficulty,
-      answer: h.candidateAnswer,
-      score: h.evaluation.score,
-    }));
+      const summaryHistory = history.map((h, i) => ({
+        index: i + 1,
+        question: h.question.text,
+        category: h.question.category,
+        difficulty: h.question.difficulty,
+        answer: h.candidateAnswer,
+        score: h.evaluation.score,
+        rubric: {
+          correctness: h.evaluation.technicalCorrectness,
+          relevance: h.evaluation.relevance,
+          depth: h.evaluation.depth,
+          clarity: h.evaluation.clarity,
+        }
+      }));
 
-    const prompt = `You are the Lead Hiring Committee Evaluator delivering the final MCA research evaluation report for candidate "${analysis.candidateName}".
+      const prompt = `You are the Lead Hiring Committee Evaluator delivering the final MCA research evaluation report for candidate "${analysis.candidateName}".
 
-INTERVIEW HISTORY & SCORES:
+INTERVIEW HISTORY & EVALUATIONS:
 ${JSON.stringify(summaryHistory, null, 2)}
 
 CANDIDATE ANALYSIS:
-${JSON.stringify(analysis, null, 2).slice(0, 2000)}
+${JSON.stringify(analysis, null, 2).slice(0, 2500)}
 
 JOB REQUIREMENTS:
-${jobDescription.slice(0, 2000)}
+${jobDescription.slice(0, 2500)}
+
+CRITICAL GRADING:
+- Calculate realistic averages from the interview scores.
+- If the candidate gave poor answers or gibberish, the overall score and rubric MUST reflect that faithfully.
+- If overall score < 50, hiring recommendation MUST be "Not Ready Yet".
+- If overall score 50-69, "Borderline / Needs Follow-up".
+- If overall score 70-84, "Hire".
+- If overall score >= 85, "Strong Hire".
 
 Provide a thorough, research-grade evaluation report formatted strictly as a JSON object with this schema:
 {
@@ -417,22 +487,24 @@ Provide a thorough, research-grade evaluation report formatted strictly as a JSO
 }
 `;
 
-    const result = await model.generateContent(prompt);
-    const report = JSON.parse(cleanJsonText(result.response.text())) as FinalEvaluationReport;
+      const result = await model.generateContent(prompt);
+      const report = JSON.parse(cleanJsonText(result.response.text())) as FinalEvaluationReport;
 
-    return {
-      report: {
-        ...report,
-        completedAt: report.completedAt || new Date().toISOString(),
-        totalTimeMinutes: report.totalTimeMinutes || Math.max(2, Math.round(history.length * 2.5)),
-      },
-      source: 'gemini',
-    };
-  } catch (err) {
-    console.error('[InterviewIQ] Gemini generateFinalEvaluation error:', err);
-    return {
-      report: generateFallbackFinalReport(history, analysis),
-      source: 'fallback',
-    };
+      return {
+        report: {
+          ...report,
+          completedAt: report.completedAt || new Date().toISOString(),
+          totalTimeMinutes: report.totalTimeMinutes || Math.max(2, Math.round(history.length * 2.5)),
+        },
+        source: 'gemini',
+      };
+    } catch (err) {
+      console.warn(`[InterviewIQ] Gemini generateFinalEvaluation failed on ${modelName}:`, err instanceof Error ? err.message : err);
+    }
   }
+
+  return {
+    report: generateFallbackFinalReport(history, analysis),
+    source: 'fallback',
+  };
 }

@@ -14,12 +14,13 @@ import {
   Sparkles,
   Award,
   ChevronRight,
-  ShieldAlert,
+  Volume2,
+  VolumeX,
+  AlertCircle,
 } from 'lucide-react';
 import {
   InterviewQuestion,
   AnswerEvaluation,
-  InterviewExchange,
   DifficultyLevel,
 } from '@/types/interview';
 
@@ -52,7 +53,11 @@ export default function InterviewConsole({
 }: InterviewConsoleProps) {
   const [answerText, setAnswerText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [autoRead, setAutoRead] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
+  const [ttsSupported, setTtsSupported] = useState(false);
+  const [micError, setMicError] = useState<string | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [timerActive, setTimerActive] = useState(true);
 
@@ -68,7 +73,95 @@ export default function InterviewConsole({
   const recognitionRef = useRef<any>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Track elapsed time per question
+  // Check TTS and STT support on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // 1. Check Text-to-Speech (speechSynthesis)
+      if ('speechSynthesis' in window) {
+        setTtsSupported(true);
+      }
+
+      // 2. Check Speech-to-Text (SpeechRecognition)
+      const SpeechRecognition =
+        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        setSpeechSupported(true);
+        try {
+          const recognition = new SpeechRecognition();
+          recognition.continuous = true;
+          recognition.interimResults = true;
+          recognition.lang = 'en-US';
+
+          recognition.onresult = (event: any) => {
+            let transcript = '';
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+              transcript += event.results[i][0].transcript;
+            }
+            if (transcript) {
+              setAnswerText((prev) => {
+                const trimmed = prev.trim();
+                return trimmed ? `${trimmed} ${transcript.trim()}` : transcript.trim();
+              });
+            }
+          };
+
+          recognition.onerror = (e: any) => {
+            console.warn('Speech recognition error:', e.error);
+            setIsRecording(false);
+            if (e.error === 'not-allowed') {
+              setMicError('Microphone permission was denied. Please allow mic access in your browser.');
+            } else if (e.error === 'no-speech') {
+              // Ignore benign timeout
+            } else {
+              setMicError(`Voice input error: ${e.error}`);
+            }
+          };
+
+          recognition.onend = () => {
+            setIsRecording(false);
+          };
+
+          recognitionRef.current = recognition;
+        } catch (err) {
+          console.warn('Could not initialize SpeechRecognition:', err);
+        }
+      }
+    }
+  }, []);
+
+  // Text-to-Speech: speak the question aloud
+  const speakQuestion = (text: string) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    window.speechSynthesis.cancel(); // Stop any ongoing speech
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.95; // Clear and natural pace
+    utterance.pitch = 1.0;
+
+    // Pick a natural English voice if available
+    const voices = window.speechSynthesis.getVoices();
+    const naturalVoice = voices.find(
+      (v) => v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Samantha'))
+    ) || voices.find((v) => v.lang.startsWith('en'));
+
+    if (naturalVoice) utterance.voice = naturalVoice;
+
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const stopSpeaking = () => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
+  };
+
+  // Timer logic
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     if (timerActive) {
@@ -81,61 +174,43 @@ export default function InterviewConsole({
     };
   }, [timerActive]);
 
-  // Reset timer on question change
+  // Reset on question change & auto-read if enabled
   useEffect(() => {
+    stopSpeaking();
     setElapsedSeconds(0);
     setAnswerText('');
     setLastExchange(null);
     setTimerActive(true);
+    setMicError(null);
+
+    if (autoRead && currentQuestion?.text) {
+      setTimeout(() => {
+        speakQuestion(currentQuestion.text);
+      }, 400);
+    }
+
     if (textareaRef.current) {
       textareaRef.current.focus();
     }
-  }, [currentQuestion.id]);
 
-  // Check Web Speech API support
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const SpeechRecognition =
-        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        setSpeechSupported(true);
-        const recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = 'en-US';
-
-        recognition.onresult = (event: any) => {
-          let currentTranscript = '';
-          for (let i = event.resultIndex; i < event.results.length; i++) {
-            currentTranscript += event.results[i][0].transcript;
-          }
-          if (currentTranscript) {
-            setAnswerText((prev) => {
-              const cleaned = prev ? `${prev} ${currentTranscript.trim()}` : currentTranscript.trim();
-              return cleaned;
-            });
-          }
-        };
-
-        recognition.onerror = (e: any) => {
-          console.warn('Speech recognition error:', e);
-          setIsRecording(false);
-        };
-
-        recognition.onend = () => {
-          setIsRecording(false);
-        };
-
-        recognitionRef.current = recognition;
+    return () => {
+      stopSpeaking();
+      if (recognitionRef.current && isRecording) {
+        try {
+          recognitionRef.current.stop();
+        } catch {}
       }
-    }
-  }, []);
+    };
+  }, [currentQuestion.id]);
 
   const toggleRecording = () => {
     if (!speechSupported || !recognitionRef.current) return;
+    setMicError(null);
 
     if (isRecording) {
-      recognitionRef.current.stop();
+      try {
+        recognitionRef.current.stop();
+      } catch {}
       setIsRecording(false);
     } else {
       try {
@@ -143,6 +218,7 @@ export default function InterviewConsole({
         setIsRecording(true);
       } catch (err) {
         console.error('Failed to start speech recognition:', err);
+        setMicError('Could not access microphone. Please ensure microphone permissions are enabled.');
       }
     }
   };
@@ -151,8 +227,11 @@ export default function InterviewConsole({
     e.preventDefault();
     if (!answerText.trim() || isEvaluating) return;
 
+    stopSpeaking();
     if (isRecording && recognitionRef.current) {
-      recognitionRef.current.stop();
+      try {
+        recognitionRef.current.stop();
+      } catch {}
       setIsRecording(false);
     }
 
@@ -175,7 +254,6 @@ export default function InterviewConsole({
   const wordCount = answerText.trim() ? answerText.trim().split(/\s+/).length : 0;
   const progressPercent = Math.min(100, Math.round(((questionIndex + 1) / totalQuestions) * 100));
 
-  // Difficulty badge styling
   const getDifficultyBadge = (diff: DifficultyLevel) => {
     switch (diff) {
       case 'beginner':
@@ -249,19 +327,65 @@ export default function InterviewConsole({
         </div>
       </div>
 
-      {/* Main Question Card */}
+      {/* Main Question Card with Text-to-Speech (TTS) Voice Controls */}
       <div className="p-6 sm:p-7 rounded-2xl bg-gradient-to-b from-slate-900/90 to-slate-900/40 border border-slate-800 shadow-xl mb-6">
-        <div className="flex flex-wrap items-center gap-2 mb-3">
-          <span className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-800 text-indigo-300 border border-slate-700">
-            {currentQuestion.category}
-          </span>
-          <span className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-indigo-950/40 text-indigo-300 border border-indigo-800/40 capitalize">
-            {currentQuestion.type.replace('-', ' ')}
-          </span>
-          {currentQuestion.targetSkillOrProject && (
-            <span className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-violet-950/30 text-violet-300 border border-violet-800/30">
-              Focus: {currentQuestion.targetSkillOrProject}
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-800 text-indigo-300 border border-slate-700">
+              {currentQuestion.category}
             </span>
+            <span className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-indigo-950/40 text-indigo-300 border border-indigo-800/40 capitalize">
+              {currentQuestion.type.replace('-', ' ')}
+            </span>
+            {currentQuestion.targetSkillOrProject && (
+              <span className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-violet-950/30 text-violet-300 border border-violet-800/30">
+                Focus: {currentQuestion.targetSkillOrProject}
+              </span>
+            )}
+          </div>
+
+          {/* Text-to-Speech Audio Buttons */}
+          {ttsSupported && (
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (isSpeaking) {
+                    stopSpeaking();
+                  } else {
+                    speakQuestion(currentQuestion.text);
+                  }
+                }}
+                className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all ${
+                  isSpeaking
+                    ? 'bg-indigo-600 text-white border-indigo-500 animate-pulse'
+                    : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+                }`}
+                title={isSpeaking ? 'Stop speaking' : 'Read question aloud using Text-to-Speech'}
+              >
+                {isSpeaking ? (
+                  <>
+                    <VolumeX className="w-3.5 h-3.5 text-white" />
+                    <span>Stop Voice</span>
+                  </>
+                ) : (
+                  <>
+                    <Volume2 className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>🔊 Read Question Aloud</span>
+                  </>
+                )}
+              </button>
+
+              <label className="hidden sm:flex items-center space-x-1.5 text-[11px] text-slate-400 cursor-pointer pl-1">
+                <input
+                  type="checkbox"
+                  checked={autoRead}
+                  onChange={(e) => setAutoRead(e.target.checked)}
+                  className="rounded border-slate-700 text-indigo-600 focus:ring-0 bg-slate-900 w-3.5 h-3.5"
+                />
+                <span>Auto-read</span>
+              </label>
+            </div>
           )}
         </div>
 
@@ -283,7 +407,13 @@ export default function InterviewConsole({
 
       {/* Instant Feedback Modal / Drawer if just evaluated */}
       {lastExchange && (
-        <div className="p-6 rounded-2xl bg-slate-900 border-2 border-indigo-600/50 shadow-2xl mb-6 animate-fade-in">
+        <div className={`p-6 rounded-2xl bg-slate-900 border-2 shadow-2xl mb-6 animate-fade-in ${
+          lastExchange.evaluation.score === 0
+            ? 'border-rose-600/70 bg-rose-950/15'
+            : lastExchange.evaluation.score < 50
+            ? 'border-amber-600/60'
+            : 'border-indigo-600/50'
+        }`}>
           <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
             <div className="flex items-center space-x-2">
               <Award className="w-5 h-5 text-indigo-400" />
@@ -292,12 +422,12 @@ export default function InterviewConsole({
             <div className="flex items-center space-x-2">
               <span className="text-xs text-slate-400">Score:</span>
               <span
-                className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                className={`px-3 py-1 rounded-full text-xs font-bold border ${
                   lastExchange.evaluation.score >= 80
-                    ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
-                    : lastExchange.evaluation.score >= 60
-                    ? 'bg-indigo-950 text-indigo-300 border border-indigo-800'
-                    : 'bg-amber-950 text-amber-300 border border-amber-800'
+                    ? 'bg-emerald-950 text-emerald-300 border-emerald-800'
+                    : lastExchange.evaluation.score >= 50
+                    ? 'bg-indigo-950 text-indigo-300 border-indigo-800'
+                    : 'bg-rose-950 text-rose-300 border-rose-800'
                 }`}
               >
                 {lastExchange.evaluation.score}/100
@@ -328,19 +458,27 @@ export default function InterviewConsole({
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4 text-center">
             <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
               <div className="text-[10px] text-slate-400">Correctness</div>
-              <div className="text-xs font-semibold text-white mt-0.5">{lastExchange.evaluation.technicalCorrectness}%</div>
+              <div className={`text-xs font-semibold mt-0.5 ${lastExchange.evaluation.technicalCorrectness === 0 ? 'text-rose-400' : 'text-white'}`}>
+                {lastExchange.evaluation.technicalCorrectness}%
+              </div>
             </div>
             <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
               <div className="text-[10px] text-slate-400">Relevance</div>
-              <div className="text-xs font-semibold text-white mt-0.5">{lastExchange.evaluation.relevance}%</div>
+              <div className={`text-xs font-semibold mt-0.5 ${lastExchange.evaluation.relevance === 0 ? 'text-rose-400' : 'text-white'}`}>
+                {lastExchange.evaluation.relevance}%
+              </div>
             </div>
             <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
               <div className="text-[10px] text-slate-400">Depth</div>
-              <div className="text-xs font-semibold text-white mt-0.5">{lastExchange.evaluation.depth}%</div>
+              <div className={`text-xs font-semibold mt-0.5 ${lastExchange.evaluation.depth === 0 ? 'text-rose-400' : 'text-white'}`}>
+                {lastExchange.evaluation.depth}%
+              </div>
             </div>
             <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
               <div className="text-[10px] text-slate-400">Clarity</div>
-              <div className="text-xs font-semibold text-white mt-0.5">{lastExchange.evaluation.clarity}%</div>
+              <div className={`text-xs font-semibold mt-0.5 ${lastExchange.evaluation.clarity === 0 ? 'text-rose-400' : 'text-white'}`}>
+                {lastExchange.evaluation.clarity}%
+              </div>
             </div>
           </div>
 
@@ -376,7 +514,7 @@ export default function InterviewConsole({
           <div className="relative">
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs font-semibold text-slate-300">
-                Your Response (Text or Voice)
+                Your Technical Response (Text or Voice)
               </label>
               <div className="flex items-center space-x-3 text-xs text-slate-400">
                 <span>{wordCount} words</span>
@@ -395,7 +533,14 @@ export default function InterviewConsole({
               className="w-full px-4 py-3.5 rounded-2xl bg-slate-900/70 border border-slate-700 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 leading-relaxed resize-y min-h-[160px] disabled:opacity-60"
             />
 
-            {/* Speech Recording Bar */}
+            {micError && (
+              <div className="mt-2 p-2.5 rounded-xl bg-rose-950/60 border border-rose-800 text-xs text-rose-300 flex items-center space-x-2">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>{micError}</span>
+              </div>
+            )}
+
+            {/* Speech-to-Text Recording Bar */}
             {speechSupported && (
               <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
                 <button
@@ -403,14 +548,14 @@ export default function InterviewConsole({
                   onClick={toggleRecording}
                   className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all ${
                     isRecording
-                      ? 'bg-rose-950/60 border-rose-600 text-rose-300 animate-pulse'
+                      ? 'bg-rose-950/80 border-rose-600 text-rose-300 animate-pulse'
                       : 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800'
                   }`}
                 >
                   {isRecording ? (
                     <>
                       <MicOff className="w-3.5 h-3.5 text-rose-400" />
-                      <span>Recording... (Click to stop)</span>
+                      <span>Listening... (Click to stop)</span>
                     </>
                   ) : (
                     <>
@@ -431,7 +576,7 @@ export default function InterviewConsole({
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
             <div className="text-[11px] text-slate-400 flex items-center space-x-1">
               <CheckCircle2 className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Responses are evaluated against 5 academic rubric dimensions.</span>
+              <span>Answers are graded with strict integrity: gibberish or empty claims receive 0/100.</span>
             </div>
 
             <button

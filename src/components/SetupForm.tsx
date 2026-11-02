@@ -12,6 +12,9 @@ import {
   ArrowRight,
   Trash2,
   CheckCircle,
+  Key,
+  ExternalLink,
+  ShieldCheck,
 } from 'lucide-react';
 import { DifficultyLevel, InterviewType, InterviewSetupConfig } from '@/types/interview';
 import { SAMPLE_PRESETS, SamplePreset } from '@/lib/sample-data';
@@ -21,6 +24,8 @@ interface SetupFormProps {
   onSubmit: (config: InterviewSetupConfig, file?: File) => void;
   isLoading: boolean;
   loadingMessage?: string;
+  apiKey?: string;
+  onSaveApiKey?: (key: string) => void;
 }
 
 export default function SetupForm({
@@ -28,6 +33,8 @@ export default function SetupForm({
   onSubmit,
   isLoading,
   loadingMessage = 'Processing context...',
+  apiKey = '',
+  onSaveApiKey,
 }: SetupFormProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [resumeText, setResumeText] = useState<string>(initialConfig?.resumeText || '');
@@ -39,7 +46,48 @@ export default function SetupForm({
   const [error, setError] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
+  // Key testing state
+  const [tempKey, setTempKey] = useState<string>(apiKey);
+  const [testingKey, setTestingKey] = useState(false);
+  const [keyValidationStatus, setKeyValidationStatus] = useState<{
+    valid: boolean;
+    message: string;
+  } | null>(apiKey ? { valid: true, message: 'Gemini Key configured' } : null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleTestAndSaveKey = async () => {
+    if (!tempKey.trim()) {
+      onSaveApiKey?.('');
+      setKeyValidationStatus(null);
+      return;
+    }
+
+    setTestingKey(true);
+    setKeyValidationStatus(null);
+
+    try {
+      const res = await fetch('/api/validate-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: tempKey.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok && data.valid) {
+        setKeyValidationStatus({ valid: true, message: data.message });
+        onSaveApiKey?.(tempKey.trim());
+      } else {
+        setKeyValidationStatus({ valid: false, message: data.message || 'Key validation failed' });
+      }
+    } catch (err) {
+      setKeyValidationStatus({
+        valid: false,
+        message: err instanceof Error ? err.message : 'Network error testing key',
+      });
+    } finally {
+      setTestingKey(false);
+    }
+  };
 
   const handleFileChange = (file: File) => {
     setError(null);
@@ -53,7 +101,6 @@ export default function SetupForm({
     }
     setSelectedFile(file);
     setResumeFileName(file.name);
-    // Clear manual resume text if uploading a new file
     setResumeText('');
   };
 
@@ -115,8 +162,91 @@ export default function SetupForm({
           Configure Your Mock Interview
         </h2>
         <p className="text-xs sm:text-sm text-slate-400 mt-2 max-w-xl mx-auto">
-          Upload your resume and paste your target job description. InterviewIQ will extract technical competencies and tailor the adaptive interview.
+          Upload your resume and paste your target job description. InterviewIQ extracts technical competencies and generates tailored, adaptive questions.
         </p>
+      </div>
+
+      {/* AI Engine Status & Key Input Card */}
+      <div className="mb-8 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-slate-900/90 via-slate-900 to-indigo-950/30 border border-slate-800 shadow-lg">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/80 mb-3">
+          <div className="flex items-center space-x-2.5">
+            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+              <Key className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="text-xs font-semibold text-white">AI Engine Configuration</span>
+                {keyValidationStatus?.valid ? (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800 flex items-center space-x-1">
+                    <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                    <span>Live Gemini Active</span>
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-950/80 text-indigo-300 border border-indigo-800">
+                    Offline Evaluator Ready
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Connect your Google Gemini API key to activate live generative AI models.
+              </p>
+            </div>
+          </div>
+
+          <a
+            href="https://aistudio.google.com/app/apikey"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[11px] text-indigo-400 hover:text-indigo-300 flex items-center space-x-1 hover:underline"
+          >
+            <span>Get free key</span>
+            <ExternalLink className="w-3 h-3" />
+          </a>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1">
+            <input
+              type="password"
+              value={tempKey}
+              onChange={(e) => setTempKey(e.target.value)}
+              placeholder="Paste Google Gemini API Key (e.g. AIzaSy...)"
+              className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-mono"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={handleTestAndSaveKey}
+            disabled={testingKey}
+            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-900 text-white text-xs font-semibold transition-all flex items-center justify-center space-x-1.5 shrink-0"
+          >
+            {testingKey ? (
+              <>
+                <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>Validating...</span>
+              </>
+            ) : (
+              <span>Connect Key</span>
+            )}
+          </button>
+        </div>
+
+        {keyValidationStatus && (
+          <div
+            className={`mt-2.5 p-2 rounded-lg text-[11px] flex items-center space-x-2 ${
+              keyValidationStatus.valid
+                ? 'bg-emerald-950/40 text-emerald-300 border border-emerald-800/40'
+                : 'bg-rose-950/40 text-rose-300 border border-rose-800/40'
+            }`}
+          >
+            {keyValidationStatus.valid ? (
+              <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            ) : (
+              <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+            )}
+            <span>{keyValidationStatus.message}</span>
+          </div>
+        )}
       </div>
 
       {/* Preset Selector Banner */}

@@ -333,6 +333,8 @@ export default function Home() {
             onSubmit={handleAnalyzeSetup}
             isLoading={isLoading}
             loadingMessage={loadingMessage}
+            apiKey={apiKey}
+            onSaveApiKey={handleSaveApiKey}
           />
         )}
 
