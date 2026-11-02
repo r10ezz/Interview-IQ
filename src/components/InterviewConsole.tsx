@@ -266,34 +266,34 @@ export default function InterviewConsole({
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 animate-fade-in">
       {/* Top Header: Conversational Stage Bar */}
-      <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
+      <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-xs mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
           <div className="flex items-center space-x-3">
             <div className="relative">
-              <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-xs">
                 <Bot className="w-5 h-5" />
               </div>
-              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-slate-900" />
+              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
+                <span className="text-xs font-bold uppercase tracking-wider text-indigo-600">
                   {currentStageName}
                 </span>
-                <span className="text-xs text-slate-500">•</span>
-                <span className="text-xs text-slate-300">
+                <span className="text-xs text-slate-400">•</span>
+                <span className="text-xs text-slate-600">
                   Question {questionIndex + 1} of {totalQuestions}
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400">
-                Interviewer: <strong className="text-slate-200">Sarah (AI Technical Lead)</strong> with candidate <strong className="text-slate-200">{candidateName}</strong>
+              <p className="text-[11px] text-slate-500">
+                Interviewer: <strong className="text-slate-800">Sarah (AI Technical Lead)</strong> with candidate <strong className="text-slate-800">{candidateName}</strong>
               </p>
             </div>
           </div>
 
           <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 text-xs font-mono text-slate-300">
-              <Clock className="w-3.5 h-3.5 text-indigo-400" />
+            <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-xs font-mono text-slate-700">
+              <Clock className="w-3.5 h-3.5 text-indigo-600" />
               <span>{formatTimer(elapsedSeconds)}</span>
             </div>
 
@@ -301,9 +301,9 @@ export default function InterviewConsole({
               <button
                 type="button"
                 onClick={onProceedToCoding}
-                className="text-xs text-violet-400 hover:text-violet-300 flex items-center space-x-1 bg-violet-950/40 border border-violet-800/40 px-2.5 py-1 rounded-lg"
+                className="text-xs text-violet-700 hover:text-violet-800 flex items-center space-x-1 bg-violet-50 hover:bg-violet-100 border border-violet-200 px-2.5 py-1 rounded-lg transition-colors"
               >
-                <Code2 className="w-3 h-3" />
+                <Code2 className="w-3.5 h-3.5" />
                 <span>Jump to Coding</span>
               </button>
             )}
@@ -311,7 +311,7 @@ export default function InterviewConsole({
             <button
               type="button"
               onClick={onFinishInterview}
-              className="text-xs text-slate-400 hover:text-rose-400 transition-colors"
+              className="text-xs text-slate-500 hover:text-rose-600 transition-colors"
               title="Finish interview and generate final report"
             >
               End Early
@@ -331,8 +331,8 @@ export default function InterviewConsole({
                   isCompleted
                     ? 'bg-emerald-500'
                     : isCurrent
-                    ? 'bg-indigo-500 shadow-sm shadow-indigo-500'
-                    : 'bg-slate-800'
+                    ? 'bg-indigo-600 shadow-xs'
+                    : 'bg-slate-200'
                 }`}
               />
             );
@@ -341,16 +341,16 @@ export default function InterviewConsole({
       </div>
 
       {/* Conversational Dialogue Card */}
-      <div className="p-6 sm:p-7 rounded-2xl bg-gradient-to-b from-slate-900 to-slate-900/60 border border-slate-800 shadow-xl mb-6">
+      <div className="p-6 sm:p-7 rounded-2xl bg-white border border-slate-200 shadow-sm mb-6">
         <div className="flex items-center justify-between gap-2 mb-4">
           <div className="flex items-center space-x-2.5">
-            <div className="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 text-xs font-bold">
+            <div className="w-7 h-7 rounded-lg bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600 text-xs font-bold">
               AI
             </div>
-            <span className="text-xs font-semibold text-slate-200">
+            <span className="text-xs font-semibold text-slate-800">
               Sarah, Technical Interviewer
             </span>
-            <span className="text-[10px] text-slate-500 uppercase px-2 py-0.5 rounded bg-slate-800 font-mono">
+            <span className="text-[10px] text-slate-600 uppercase px-2 py-0.5 rounded bg-slate-100 font-mono">
               {currentQuestion.category}
             </span>
           </div>
@@ -368,8 +368,8 @@ export default function InterviewConsole({
               }}
               className={`inline-flex items-center space-x-1.5 px-3 py-1 rounded-lg border text-xs font-medium transition-all ${
                 isSpeaking
-                  ? 'bg-indigo-600 text-white border-indigo-500 animate-pulse'
-                  : 'bg-slate-800/80 hover:bg-slate-700 text-slate-200 border-slate-700'
+                  ? 'bg-indigo-600 text-white border-indigo-600 animate-pulse'
+                  : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
               }`}
               title="Read question aloud"
             >
@@ -380,7 +380,7 @@ export default function InterviewConsole({
                 </>
               ) : (
                 <>
-                  <Volume2 className="w-3.5 h-3.5 text-indigo-400" />
+                  <Volume2 className="w-3.5 h-3.5 text-indigo-600" />
                   <span>Listen to Question</span>
                 </>
               )}
@@ -389,8 +389,8 @@ export default function InterviewConsole({
         </div>
 
         {/* Question Bubble */}
-        <div className="relative pl-3 border-l-2 border-indigo-500">
-          <p className="text-base sm:text-lg font-medium text-white leading-relaxed">
+        <div className="relative pl-4 border-l-4 border-indigo-600 py-1">
+          <p className="text-base sm:text-lg font-medium text-slate-900 leading-relaxed">
             &ldquo;{currentQuestion.text}&rdquo;
           </p>
         </div>
@@ -398,29 +398,29 @@ export default function InterviewConsole({
 
       {/* Instant Feedback Drawer after Answering */}
       {lastExchange && (
-        <div className={`p-5 rounded-2xl bg-slate-900 border-2 shadow-xl mb-6 animate-fade-in ${
+        <div className={`p-5 rounded-2xl border shadow-sm mb-6 animate-fade-in ${
           lastExchange.evaluation.score === 0
-            ? 'border-rose-600/70 bg-rose-950/20'
+            ? 'border-rose-300 bg-rose-50/40'
             : lastExchange.evaluation.score < 50
-            ? 'border-amber-600/60'
-            : 'border-emerald-600/60'
+            ? 'border-amber-300 bg-amber-50/40'
+            : 'border-emerald-300 bg-emerald-50/40'
         }`}>
-          <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
             <div className="flex items-center space-x-2">
-              <Award className="w-4 h-4 text-indigo-400" />
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+              <Award className="w-4 h-4 text-indigo-600" />
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-700">
                 Interviewer Assessment
               </h4>
             </div>
             <div className="flex items-center space-x-2">
-              <span className="text-xs text-slate-400">Score:</span>
+              <span className="text-xs text-slate-500">Score:</span>
               <span
                 className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${
                   lastExchange.evaluation.score >= 75
-                    ? 'bg-emerald-950 text-emerald-300 border-emerald-800'
+                    ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
                     : lastExchange.evaluation.score >= 50
-                    ? 'bg-indigo-950 text-indigo-300 border-indigo-800'
-                    : 'bg-rose-950 text-rose-300 border-rose-800'
+                    ? 'bg-indigo-100 text-indigo-800 border-indigo-300'
+                    : 'bg-rose-100 text-rose-800 border-rose-300'
                 }`}
               >
                 {lastExchange.evaluation.score}/100
@@ -428,7 +428,7 @@ export default function InterviewConsole({
             </div>
           </div>
 
-          <p className="text-xs sm:text-sm text-slate-200 leading-relaxed mb-4">
+          <p className="text-xs sm:text-sm text-slate-800 leading-relaxed mb-4">
             {lastExchange.evaluation.quickFeedback}
           </p>
 
@@ -438,16 +438,16 @@ export default function InterviewConsole({
                 <button
                   type="button"
                   onClick={onProceedToCoding}
-                  className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-white bg-violet-600 hover:bg-violet-500 shadow-md transition-all"
+                  className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-white bg-violet-600 hover:bg-violet-700 shadow-sm transition-all"
                 >
-                  <span>Proceed to Live Coding Round (LeetCode Style)</span>
+                  <span>Proceed to Live Coding Round</span>
                   <Code2 className="w-4 h-4" />
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={onFinishInterview}
-                  className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md transition-all"
+                  className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm transition-all"
                 >
                   <span>View Full Performance Report</span>
                   <ChevronRight className="w-4 h-4" />
@@ -457,7 +457,7 @@ export default function InterviewConsole({
               <button
                 type="button"
                 onClick={() => setLastExchange(null)}
-                className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md transition-all"
+                className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-all"
               >
                 <span>Next Question</span>
                 <ChevronRight className="w-4 h-4" />
@@ -470,13 +470,13 @@ export default function InterviewConsole({
       {/* Candidate Answer Form */}
       {!lastExchange && (
         <form onSubmit={handleFormSubmit} className="space-y-4">
-          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
+          <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
             <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center space-x-2 text-xs font-semibold text-slate-300">
-                <User className="w-3.5 h-3.5 text-indigo-400" />
+              <div className="flex items-center space-x-2 text-xs font-semibold text-slate-800">
+                <User className="w-3.5 h-3.5 text-indigo-600" />
                 <span>Your Response</span>
               </div>
-              <div className="text-xs text-slate-400 font-mono">
+              <div className="text-xs text-slate-500 font-mono">
                 {wordCount} words
               </div>
             </div>
@@ -491,36 +491,36 @@ export default function InterviewConsole({
               disabled={isEvaluating}
               placeholder="Answer conversationally. Explain foundational concepts, mechanisms, and real-world trade-offs..."
               rows={7}
-              className="w-full px-3.5 py-3 rounded-xl bg-slate-950 border border-slate-700 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 leading-relaxed resize-y min-h-[140px] disabled:opacity-60"
+              className="w-full px-3.5 py-3 rounded-xl bg-slate-50 border border-slate-300 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 leading-relaxed resize-y min-h-[140px] disabled:opacity-60"
             />
 
             {micError && (
-              <div className="mt-2 p-2 rounded-xl bg-rose-950/60 border border-rose-800 text-xs text-rose-300 flex items-center space-x-2">
-                <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+              <div className="mt-2 p-2 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-center space-x-2">
+                <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
                 <span>{micError}</span>
               </div>
             )}
 
             {/* Voice Dictation Bar */}
-            <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
+            <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
               {speechSupported ? (
                 <button
                   type="button"
                   onClick={toggleRecording}
                   className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all ${
                     isRecording
-                      ? 'bg-rose-950/80 border-rose-600 text-rose-300 animate-pulse'
-                      : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800'
+                      ? 'bg-rose-50 border-rose-300 text-rose-700 animate-pulse'
+                      : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:text-slate-900'
                   }`}
                 >
                   {isRecording ? (
                     <>
-                      <MicOff className="w-3.5 h-3.5 text-rose-400" />
+                      <MicOff className="w-3.5 h-3.5 text-rose-600" />
                       <span>Recording voice... (Click to stop)</span>
                     </>
                   ) : (
                     <>
-                      <Mic className="w-3.5 h-3.5 text-indigo-400" />
+                      <Mic className="w-3.5 h-3.5 text-indigo-600" />
                       <span>Speak with Microphone</span>
                     </>
                   )}
@@ -532,7 +532,7 @@ export default function InterviewConsole({
               <button
                 type="submit"
                 disabled={isEvaluating || !answerText.trim()}
-                className="inline-flex items-center space-x-2 px-6 py-2 rounded-xl text-xs sm:text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-900/60 disabled:cursor-not-allowed shadow-md transition-all"
+                className="inline-flex items-center space-x-2 px-6 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 disabled:cursor-not-allowed shadow-md shadow-indigo-600/20 transition-all"
               >
                 {isEvaluating ? (
                   <>

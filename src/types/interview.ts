@@ -97,6 +97,7 @@ export interface CodingEvaluation {
 export interface CodingSubmission {
   challenge: CodingChallenge;
   code: string;
+  language?: string;
   evaluation: CodingEvaluation;
   submittedAt: string;
 }

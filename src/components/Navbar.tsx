@@ -17,7 +17,7 @@ export default function Navbar({
   hasApiKey = false,
 }: NavbarProps) {
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-800/80 bg-[#0B0F19]/90 backdrop-blur-md">
+    <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/90 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Brand / Logo */}
         <div 
@@ -26,35 +26,35 @@ export default function Navbar({
           role="button"
           tabIndex={0}
         >
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform duration-200">
-            <Sparkles className="w-5 h-5 text-white" />
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center shadow-md shadow-indigo-600/20 group-hover:scale-105 transition-transform duration-200">
+            <Sparkles className="w-4 h-4 text-white" />
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <span className="text-xl font-bold tracking-tight text-white group-hover:text-indigo-400 transition-colors">
-                Interview<span className="text-indigo-400">IQ</span>
+              <span className="text-lg font-bold tracking-tight text-slate-900 group-hover:text-indigo-600 transition-colors">
+                Interview<span className="text-indigo-600">IQ</span>
               </span>
-              <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-950/80 text-indigo-300 border border-indigo-800/60">
-                <GraduationCap className="w-3 h-3 mr-1 text-indigo-400" />
+              <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                <GraduationCap className="w-3 h-3 mr-1 text-indigo-600" />
                 MCA Research
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 hidden md:block">
+            <p className="text-[11px] text-slate-500 hidden md:block">
               Adaptive AI Mock Interview System
             </p>
           </div>
         </div>
 
         {/* Current State Indicator & Actions */}
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2.5">
           {currentStep !== 'landing' && (
             <button
               onClick={onResetSession}
-              className="inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-900/80 hover:bg-slate-800 border border-slate-800 rounded-lg transition-all"
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg transition-all"
               title="Restart session"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">New Interview</span>
+              <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+              <span className="hidden sm:inline">New Session</span>
             </button>
           )}
 
@@ -62,14 +62,14 @@ export default function Navbar({
             onClick={onOpenApiKeyModal}
             className={`inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all ${
               hasApiKey
-                ? 'bg-emerald-950/40 border-emerald-800/60 text-emerald-300 hover:bg-emerald-900/40'
-                : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800'
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+                : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200 hover:text-slate-900'
             }`}
             title="Configure Gemini API Key"
           >
             <Key className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">
-              {hasApiKey ? 'Gemini Key Configured' : 'API Key / Demo Mode'}
+              {hasApiKey ? 'Gemini AI Active' : 'API Key Config'}
             </span>
             <span className="sm:hidden">API</span>
           </button>

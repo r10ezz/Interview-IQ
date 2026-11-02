@@ -1,17 +1,17 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0b0f19;
-  --foreground: #f1f5f9;
-  --card: #111827;
-  --card-foreground: #f8fafc;
-  --card-border: #1f293d;
-  --primary: #6366f1;
-  --primary-hover: #4f46e5;
-  --accent: #8b5cf6;
-  --accent-blue: #38bdf8;
-  --muted: #94a3b8;
-  --muted-dark: #64748b;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --card-border: #e2e8f0;
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --accent: #7c3aed;
+  --accent-blue: #0284c7;
+  --muted: #64748b;
+  --muted-dark: #94a3b8;
 }
 
 body {
@@ -22,34 +22,34 @@ body {
   overflow-x: hidden;
 }
 
-/* Custom sleek scrollbar */
+/* Custom sleek light scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
 }
 ::-webkit-scrollbar-track {
-  background: #0b0f19;
+  background: #f1f5f9;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: #cbd5e1;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #94a3b8;
 }
 
-/* Subtle glow animations */
+/* Subtle pulse animations */
 @keyframes subtle-glow {
   0%, 100% {
-    opacity: 0.4;
+    opacity: 0.6;
   }
   50% {
-    opacity: 0.8;
+    opacity: 1;
   }
 }
 
 .animate-subtle-glow {
-  animation: subtle-glow 4s ease-in-out infinite;
+  animation: subtle-glow 3s ease-in-out infinite;
 }
 
 /* Print styling for MCA Research Report export */
@@ -62,13 +62,13 @@ body {
     display: none !important;
   }
   .print-card {
-    border: 1px solid #cccccc !important;
+    border: 1px solid #e2e8f0 !important;
     background: #ffffff !important;
     color: #000000 !important;
     box-shadow: none !important;
     break-inside: avoid;
   }
   .print-text-dark {
-    color: #111827 !important;
+    color: #0f172a !important;
   }
 }
