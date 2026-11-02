@@ -15,8 +15,8 @@ import {
   generateFallbackFinalReport,
 } from './fallback-data';
 
-// Available stable Gemini models in order of priority
-const GEMINI_MODELS = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'];
+// Available stable Gemini models in order of priority (Fastest first)
+const GEMINI_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-3.8-pro', 'gemini-flash-latest'];
 
 function getGeminiClient(customApiKey?: string): GoogleGenerativeAI | null {
   const key = customApiKey || process.env.GEMINI_API_KEY;
@@ -41,11 +41,11 @@ function cleanJsonText(raw: string): string {
 export async function validateApiKey(apiKey: string): Promise<{ valid: boolean; message: string }> {
   try {
     const client = new GoogleGenerativeAI(apiKey.trim());
-    const model = client.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = client.getGenerativeModel({ model: 'gemini-3.5-flash-lite' });
     const result = await model.generateContent('Say hello in 1 word.');
     const text = result.response.text();
     if (text) {
-      return { valid: true, message: 'Google Gemini 1.5 Flash connected successfully!' };
+      return { valid: true, message: 'Google Gemini AI connected successfully!' };
     }
     return { valid: false, message: 'No response received from Gemini.' };
   } catch (err) {
