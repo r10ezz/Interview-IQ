@@ -6,7 +6,7 @@ import { Sparkles, GraduationCap, Key, RotateCcw } from 'lucide-react';
 interface NavbarProps {
   onOpenApiKeyModal?: () => void;
   onResetSession?: () => void;
-  currentStep?: 'landing' | 'setup' | 'analysis' | 'interview' | 'evaluation';
+  currentStep?: 'landing' | 'setup' | 'analysis' | 'interview' | 'coding' | 'evaluation';
   hasApiKey?: boolean;
 }
 

@@ -6,6 +6,7 @@ import {
   InterviewExchange,
   DifficultyLevel,
   InterviewType,
+  CodingSubmission,
 } from '@/types/interview';
 
 // Common technical and English words to detect coherent speech vs random keystrokes
@@ -171,7 +172,7 @@ export function generateFallbackQuestions(
   analysis: CandidateAnalysis,
   interviewType: InterviewType,
   difficulty: DifficultyLevel,
-  count: number = 4
+  count: number = 3
 ): InterviewQuestion[] {
   const skills = [
     ...analysis.matchingSkills,
@@ -179,62 +180,51 @@ export function generateFallbackQuestions(
     ...analysis.technicalSkills
   ];
 
-  const skill1 = skills[0] || 'React & Frontend Architecture';
-  const skill2 = skills[1] || 'Node.js & Backend Microservices';
-  const skill3 = skills[2] || 'PostgreSQL & Database Design';
-  const skill4 = skills[3] || 'Distributed Caching & Redis';
+  const primarySkill = skills[0] || 'JavaScript & React';
+  const secondarySkill = skills[1] || 'Node.js & Backend Architecture';
+  const dataSkill = skills[2] || 'PostgreSQL & Databases';
   const topProject = analysis.projects[0]?.name || 'Primary Production Project';
 
   const bank: InterviewQuestion[] = [
     {
       id: 'q1',
-      skillStage: `Stage 1: ${skill1}`,
-      type: 'job-requirement',
-      category: `${skill1} Architecture`,
-      targetSkillOrProject: skill1,
-      difficulty,
+      skillStage: `Stage 1: Core Fundamentals & Most-Asked Concepts`,
+      type: 'fundamental',
+      category: `${primarySkill} Fundamentals`,
+      targetSkillOrProject: primarySkill,
+      difficulty: 'beginner',
       suggestedDurationSeconds: 120,
-      text: `Let's test your depth in ${skill1}. In a high-traffic production application requiring sub-second response times, what architectural pattern do you employ to manage state synchronization, prevent unnecessary re-renders, and ensure data integrity?`,
+      text: `Let's start with foundational concepts. In ${primarySkill}, can you explain the JavaScript Event Loop, the difference between microtasks and macrotasks, and how asynchronous operations (Promises vs setTimeout) are prioritized during execution?`,
     },
     {
       id: 'q2',
-      skillStage: `Stage 2: ${skill2}`,
+      skillStage: `Stage 2: Applied Component Architecture & State`,
       type: 'job-requirement',
-      category: `${skill2} Design & APIs`,
-      targetSkillOrProject: skill2,
-      difficulty,
+      category: `${primarySkill} Architecture`,
+      targetSkillOrProject: primarySkill,
+      difficulty: 'intermediate',
       suggestedDurationSeconds: 120,
-      text: `Moving to ${skill2}. When building high-throughput microservices that communicate under concurrent user load, how do you handle partial service degradation, retry storms, and circuit breaking?`,
+      text: `Moving to practical architecture: In a React application, what triggers a component re-render, and how do you prevent unnecessary re-render cascades across deeply nested components using memoization and custom hooks?`,
     },
     {
       id: 'q3',
-      skillStage: `Stage 3: ${skill3}`,
-      type: 'resume-project',
-      category: `${skill3} & Practical Bottlenecks`,
-      targetSkillOrProject: topProject,
-      difficulty,
-      suggestedDurationSeconds: 150,
-      text: `In your project "${topProject}", you implemented ${skill3}. Walk me through a critical database query bottleneck or concurrency race condition you diagnosed. What was your indexing, locking, or query restructuring strategy?`,
+      skillStage: `Stage 3: Backend Services & API Design`,
+      type: 'job-requirement',
+      category: `${secondarySkill} & Microservices`,
+      targetSkillOrProject: secondarySkill,
+      difficulty: 'intermediate',
+      suggestedDurationSeconds: 120,
+      text: `Let's examine backend systems in ${secondarySkill}. When designing scalable REST or microservice APIs, how do you handle asynchronous error propagation, graceful degradation, and connection pool exhaustion under high concurrent load?`,
     },
     {
       id: 'q4',
-      skillStage: `Stage 4: ${skill4}`,
-      type: 'job-requirement',
-      category: `${skill4} & Scalability`,
-      targetSkillOrProject: skill4,
-      difficulty,
-      suggestedDurationSeconds: 120,
-      text: `Next, evaluating ${skill4}. How do you architect a multi-tiered caching layer to prevent cache stampedes (dogpile effect) when high-cardinality keys expire simultaneously during traffic spikes?`,
-    },
-    {
-      id: 'q5',
-      skillStage: `Stage 5: Engineering Decision-Making & Trade-offs`,
-      type: 'behavioral',
-      category: 'Technical Leadership & Alignment',
-      targetSkillOrProject: 'Architectural Trade-offs',
-      difficulty: 'intermediate',
-      suggestedDurationSeconds: 120,
-      text: `Describe a situation where delivery timelines forced you to make a technical trade-off between architectural scalability and rapid shipment. What technical debt did you accept, and how did you measure and address it post-launch?`,
+      skillStage: `Stage 4: Real-World Incident & Latency Triage`,
+      type: 'resume-project',
+      category: `Production Engineering & Bottlenecks`,
+      targetSkillOrProject: topProject,
+      difficulty: 'advanced',
+      suggestedDurationSeconds: 150,
+      text: `In your project "${topProject}", imagine production API response times suddenly spike from 200ms to 4000ms. Walk me through your step-by-step diagnostic sequence to pinpoint whether the bottleneck is CPU, memory leaks, unindexed database queries, or external network latency.`,
     }
   ];
 
@@ -432,14 +422,23 @@ export function generateFallbackAnswerEvaluation(
 
 export function generateFallbackFinalReport(
   history: InterviewExchange[],
-  analysis: CandidateAnalysis
+  analysis: CandidateAnalysis,
+  codingSubmissions?: CodingSubmission[]
 ): FinalEvaluationReport {
   const total = history.length || 1;
-  const avgOverall = Math.round(history.reduce((sum, h) => sum + h.evaluation.score, 0) / total);
+  const avgVerbal = Math.round(history.reduce((sum, h) => sum + h.evaluation.score, 0) / total);
   const avgCorrectness = Math.round(history.reduce((sum, h) => sum + h.evaluation.technicalCorrectness, 0) / total);
   const avgRelevance = Math.round(history.reduce((sum, h) => sum + h.evaluation.relevance, 0) / total);
   const avgDepth = Math.round(history.reduce((sum, h) => sum + h.evaluation.depth, 0) / total);
   const avgClarity = Math.round(history.reduce((sum, h) => sum + h.evaluation.clarity, 0) / total);
+
+  const avgCoding = codingSubmissions && codingSubmissions.length > 0
+    ? Math.round(codingSubmissions.reduce((sum, s) => sum + (s.evaluation.score || 0), 0) / codingSubmissions.length)
+    : undefined;
+
+  const avgOverall = avgCoding !== undefined
+    ? Math.round(avgVerbal * 0.6 + avgCoding * 0.4)
+    : avgVerbal;
 
   let recommendation: FinalEvaluationReport['hiringRecommendation'] = 'Hire';
   if (avgOverall >= 85) recommendation = 'Strong Hire';
@@ -453,6 +452,8 @@ export function generateFallbackFinalReport(
     answerRelevance: avgRelevance,
     technicalDepth: avgDepth,
     communicationClarity: avgClarity,
+    codingScore: avgCoding,
+    codingSubmissions: codingSubmissions || [],
     hiringRecommendation: recommendation,
     performanceSummary: avgOverall < 50
       ? `The candidate did not demonstrate sufficient technical depth or clarity across the ${total} questions. Responses frequently lacked concrete architectural context, required terminology, or actionable engineering trade-offs.`

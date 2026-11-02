@@ -8,6 +8,7 @@ import HowItWorks from '@/components/HowItWorks';
 import SetupForm from '@/components/SetupForm';
 import AnalysisDashboard from '@/components/AnalysisDashboard';
 import InterviewConsole from '@/components/InterviewConsole';
+import CodingRound from '@/components/CodingRound';
 import EvaluationDashboard from '@/components/EvaluationDashboard';
 import ApiKeyModal from '@/components/ApiKeyModal';
 
@@ -18,10 +19,12 @@ import {
   FinalEvaluationReport,
   InterviewSetupConfig,
   DifficultyLevel,
+  CodingSubmission,
 } from '@/types/interview';
 import { SAMPLE_PRESETS } from '@/lib/sample-data';
+import { DEFAULT_CODING_CHALLENGES } from '@/lib/coding-challenges';
 
-type AppStep = 'landing' | 'setup' | 'analysis' | 'interview' | 'evaluation';
+type AppStep = 'landing' | 'setup' | 'analysis' | 'interview' | 'coding' | 'evaluation';
 
 export default function Home() {
   const [currentStep, setCurrentStep] = useState<AppStep>('landing');
@@ -42,6 +45,9 @@ export default function Home() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
   const [currentDifficulty, setCurrentDifficulty] = useState<DifficultyLevel>('intermediate');
   const [interviewHistory, setInterviewHistory] = useState<InterviewExchange[]>([]);
+
+  // Coding round state
+  const [codingSubmissions, setCodingSubmissions] = useState<CodingSubmission[]>([]);
 
   // Final evaluation state
   const [finalReport, setFinalReport] = useState<FinalEvaluationReport | null>(null);
@@ -80,6 +86,7 @@ export default function Home() {
     setCurrentQuestion(null);
     setCurrentQuestionIndex(0);
     setInterviewHistory([]);
+    setCodingSubmissions([]);
     setFinalReport(null);
   };
 
@@ -266,12 +273,20 @@ export default function Home() {
     }
   };
 
-  // Step 4: Final evaluation generation
-  const handleGenerateFinalEvaluation = async () => {
+  // Step 4: Live Coding Round completion
+  const handleCompleteCodingRound = (subs: CodingSubmission[]) => {
+    setCodingSubmissions(subs);
+    handleGenerateFinalEvaluation(subs);
+  };
+
+  // Step 5: Final evaluation generation
+  const handleGenerateFinalEvaluation = async (overrideSubmissions?: CodingSubmission[]) => {
     if (!candidateAnalysis || !setupConfig || interviewHistory.length === 0) {
       alert('Cannot evaluate empty interview.');
       return;
     }
+
+    const subsToSubmit = overrideSubmissions || codingSubmissions;
 
     setIsLoading(true);
     setLoadingMessage('Lead Evaluator synthesizing multi-rubric performance report...');
@@ -284,6 +299,7 @@ export default function Home() {
           interviewHistory,
           candidateAnalysis,
           jobDescription: setupConfig.jobDescription,
+          codingSubmissions: subsToSubmit,
           customApiKey: apiKey || undefined,
         }),
       });
@@ -356,8 +372,17 @@ export default function Home() {
             currentDifficulty={currentDifficulty}
             allQuestions={allQuestions}
             onSubmitAnswer={handleSubmitAnswer}
-            onFinishInterview={handleGenerateFinalEvaluation}
+            onProceedToCoding={() => setCurrentStep('coding')}
+            onFinishInterview={() => handleGenerateFinalEvaluation()}
             isEvaluating={isEvaluatingAnswer}
+            candidateName={candidateAnalysis?.candidateName || 'Candidate'}
+          />
+        )}
+
+        {currentStep === 'coding' && (
+          <CodingRound
+            challenges={DEFAULT_CODING_CHALLENGES}
+            onCompleteCodingRound={handleCompleteCodingRound}
             candidateName={candidateAnalysis?.candidateName || 'Candidate'}
           />
         )}

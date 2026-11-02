@@ -10,6 +10,7 @@ export async function POST(req: NextRequest) {
       interviewHistory,
       candidateAnalysis,
       jobDescription,
+      codingSubmissions,
       customApiKey,
     } = body;
 
@@ -31,7 +32,8 @@ export async function POST(req: NextRequest) {
       interviewHistory as InterviewExchange[],
       candidateAnalysis as CandidateAnalysis,
       jobDescription,
-      customApiKey
+      customApiKey,
+      codingSubmissions
     );
 
     return NextResponse.json({

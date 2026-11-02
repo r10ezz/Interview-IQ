@@ -17,6 +17,9 @@ import {
   Briefcase,
   ShieldCheck,
   TrendingUp,
+  Code2,
+  CheckCircle2,
+  Terminal,
 } from 'lucide-react';
 import {
   Radar,
@@ -47,7 +50,7 @@ export default function EvaluationDashboard({
   onRestart,
   source,
 }: EvaluationDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'questions' | 'roadmap'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'questions' | 'coding' | 'roadmap'>('overview');
   const [expandedQuestions, setExpandedQuestions] = useState<Record<string, boolean>>({
     '0': true, // first question expanded by default
   });
@@ -176,8 +179,10 @@ export default function EvaluationDashboard({
           </div>
         </div>
 
-        {/* 4 Dimension Metrics Mini Grid */}
-        <div className="mt-6 pt-6 border-t border-slate-800/80 grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {/* Metrics Mini Grid */}
+        <div className={`mt-6 pt-6 border-t border-slate-800/80 grid gap-3 ${
+          report.codingScore !== undefined ? 'grid-cols-2 sm:grid-cols-5' : 'grid-cols-2 sm:grid-cols-4'
+        }`}>
           <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 text-center">
             <div className="text-[11px] text-slate-400">Technical Correctness</div>
             <div className="text-lg font-bold text-white mt-1">{report.technicalCorrectness}%</div>
@@ -194,14 +199,20 @@ export default function EvaluationDashboard({
             <div className="text-[11px] text-slate-400">Communication Clarity</div>
             <div className="text-lg font-bold text-white mt-1">{report.communicationClarity}%</div>
           </div>
+          {report.codingScore !== undefined && (
+            <div className="p-3.5 rounded-xl bg-violet-950/40 border border-violet-800/60 text-center">
+              <div className="text-[11px] text-violet-300 font-semibold">Live Coding Score</div>
+              <div className="text-lg font-bold text-violet-200 mt-1">{report.codingScore}%</div>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Tabs Navigation */}
-      <div className="mt-8 flex items-center space-x-2 border-b border-slate-800 no-print">
+      <div className="mt-8 flex items-center space-x-2 border-b border-slate-800 no-print overflow-x-auto">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-t-xl transition-colors border-b-2 flex items-center space-x-2 ${
+          className={`px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-t-xl transition-colors border-b-2 flex items-center space-x-2 shrink-0 ${
             activeTab === 'overview'
               ? 'border-indigo-500 text-white bg-slate-900/60'
               : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -213,7 +224,7 @@ export default function EvaluationDashboard({
 
         <button
           onClick={() => setActiveTab('questions')}
-          className={`px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-t-xl transition-colors border-b-2 flex items-center space-x-2 ${
+          className={`px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-t-xl transition-colors border-b-2 flex items-center space-x-2 shrink-0 ${
             activeTab === 'questions'
               ? 'border-indigo-500 text-white bg-slate-900/60'
               : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -223,9 +234,23 @@ export default function EvaluationDashboard({
           <span>Question-by-Question Deep Dive ({report.questionBreakdown.length})</span>
         </button>
 
+        {report.codingSubmissions && report.codingSubmissions.length > 0 && (
+          <button
+            onClick={() => setActiveTab('coding')}
+            className={`px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-t-xl transition-colors border-b-2 flex items-center space-x-2 shrink-0 ${
+              activeTab === 'coding'
+                ? 'border-violet-500 text-white bg-slate-900/60'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Code2 className="w-4 h-4 text-violet-400" />
+            <span>Live Coding Assessment ({report.codingSubmissions.length})</span>
+          </button>
+        )}
+
         <button
           onClick={() => setActiveTab('roadmap')}
-          className={`px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-t-xl transition-colors border-b-2 flex items-center space-x-2 ${
+          className={`px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-t-xl transition-colors border-b-2 flex items-center space-x-2 shrink-0 ${
             activeTab === 'roadmap'
               ? 'border-indigo-500 text-white bg-slate-900/60'
               : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -385,6 +410,70 @@ export default function EvaluationDashboard({
               })}
             </div>
           </div>
+
+          {/* Round 2: Live Coding Performance Card in Overview */}
+          {report.codingSubmissions && report.codingSubmissions.length > 0 && (
+            <div className="p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-violet-950/20 to-slate-900 border border-violet-800/40">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-800 gap-3">
+                <div className="flex items-center space-x-3">
+                  <div className="w-9 h-9 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center text-violet-400">
+                    <Code2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-white flex items-center space-x-2">
+                      <span>Round 2: Practical Coding Assessment</span>
+                      <span className="text-xs text-violet-400">({report.codingSubmissions.length} Challenges)</span>
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Evaluated server-side by Gemini for execution correctness, Big-O complexity, and defensive edge-cases.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs text-slate-400">Coding Score:</span>
+                  <span className="px-3 py-1 rounded-xl text-xs font-bold bg-violet-950 border border-violet-800 text-violet-300">
+                    {report.codingScore ?? Math.round(report.codingSubmissions.reduce((a, b) => a + b.evaluation.score, 0) / report.codingSubmissions.length)}/100
+                  </span>
+                  <button
+                    onClick={() => setActiveTab('coding')}
+                    className="px-3 py-1 rounded-xl text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 transition-colors"
+                  >
+                    View Code & Big-O →
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                {report.codingSubmissions.map((sub, idx) => (
+                  <div key={idx} className="p-4 rounded-xl bg-slate-950/70 border border-slate-800">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold text-white">{sub.challenge.title}</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                        sub.evaluation.score >= 70
+                          ? 'bg-emerald-950 text-emerald-300 border-emerald-800'
+                          : 'bg-amber-950 text-amber-300 border-amber-800'
+                      }`}>
+                        {sub.evaluation.score}/100 • {sub.evaluation.passed ? 'Passed' : 'Needs Optimization'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center space-x-3 text-[11px] text-slate-400 mb-2 font-mono">
+                      <span>Time: <strong className="text-violet-300">{sub.evaluation.timeComplexity}</strong></span>
+                      <span>•</span>
+                      <span>Space: <strong className="text-violet-300">{sub.evaluation.spaceComplexity}</strong></span>
+                      <span>•</span>
+                      <span>Skill: <strong className="text-slate-300 font-sans">{sub.challenge.skillCategory}</strong></span>
+                    </div>
+
+                    <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed">
+                      {sub.evaluation.feedback}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -504,6 +593,138 @@ export default function EvaluationDashboard({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Tab: Live Coding Assessment Full Breakdown */}
+      {activeTab === 'coding' && report.codingSubmissions && (
+        <div className="mt-8 space-y-6 animate-fade-in">
+          {report.codingSubmissions.map((submission, idx) => (
+            <div
+              key={idx}
+              className="rounded-2xl bg-slate-900/70 border border-slate-800 overflow-hidden shadow-xl"
+            >
+              {/* Header */}
+              <div className="p-5 bg-slate-900 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center text-violet-400 shrink-0">
+                    <Code2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center space-x-2 mb-1">
+                      <span className="text-xs font-bold uppercase tracking-wider text-violet-400">
+                        Challenge {idx + 1}
+                      </span>
+                      <span className="text-slate-600">•</span>
+                      <span className="text-xs text-slate-300">{submission.challenge.skillCategory}</span>
+                      <span className="text-slate-600">•</span>
+                      <span className="text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
+                        {submission.challenge.language}
+                      </span>
+                    </div>
+                    <h3 className="text-base font-bold text-white">{submission.challenge.title}</h3>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <span className={`px-3 py-1 rounded-xl text-xs font-bold border ${
+                    submission.evaluation.score >= 70
+                      ? 'bg-emerald-950 text-emerald-300 border-emerald-800'
+                      : 'bg-amber-950 text-amber-300 border-amber-800'
+                  }`}>
+                    Score: {submission.evaluation.score}/100 ({submission.evaluation.passed ? 'Passed' : 'Needs Optimization'})
+                  </span>
+                </div>
+              </div>
+
+              {/* Problem Brief */}
+              <div className="p-5 border-b border-slate-800 bg-slate-950/40 text-xs text-slate-300 leading-relaxed whitespace-pre-line">
+                {submission.challenge.description}
+              </div>
+
+              {/* Big-O and Rubric Metrics */}
+              <div className="p-4 bg-slate-950/70 border-b border-slate-800 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+                  <div className="text-[10px] text-slate-400">Time Complexity</div>
+                  <div className="text-xs font-mono font-bold text-violet-300 mt-0.5">{submission.evaluation.timeComplexity}</div>
+                </div>
+                <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+                  <div className="text-[10px] text-slate-400">Space Complexity</div>
+                  <div className="text-xs font-mono font-bold text-violet-300 mt-0.5">{submission.evaluation.spaceComplexity}</div>
+                </div>
+                <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+                  <div className="text-[10px] text-slate-400">Correctness</div>
+                  <div className="text-xs font-bold text-white mt-0.5">{submission.evaluation.correctnessScore}%</div>
+                </div>
+                <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+                  <div className="text-[10px] text-slate-400">Code Quality</div>
+                  <div className="text-xs font-bold text-white mt-0.5">{submission.evaluation.codeQuality}%</div>
+                </div>
+              </div>
+
+              {/* Submitted Code Preview */}
+              <div className="p-5 border-b border-slate-800">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-slate-300 flex items-center space-x-1.5">
+                    <Terminal className="w-3.5 h-3.5 text-violet-400" />
+                    <span>Candidate Submitted Code</span>
+                  </span>
+                </div>
+                <pre className="p-4 rounded-xl bg-[#090D16] border border-slate-800 text-xs font-mono text-slate-200 overflow-x-auto leading-relaxed max-h-72">
+                  <code>{submission.code}</code>
+                </pre>
+              </div>
+
+              {/* Feedback and Edge Cases */}
+              <div className="p-5 space-y-4">
+                <div>
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+                    Evaluator Code Critique
+                  </h4>
+                  <p className="text-xs text-slate-200 leading-relaxed bg-slate-950 p-3 rounded-xl border border-slate-800">
+                    {submission.evaluation.feedback}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {submission.evaluation.edgeCasesCovered.length > 0 && (
+                    <div className="p-3 rounded-xl bg-emerald-950/20 border border-emerald-900/40">
+                      <div className="text-[11px] font-semibold text-emerald-400 mb-1 flex items-center space-x-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Edge Cases Covered:</span>
+                      </div>
+                      <ul className="text-xs text-slate-300 space-y-1">
+                        {submission.evaluation.edgeCasesCovered.map((c, i) => (
+                          <li key={i}>• {c}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {submission.evaluation.edgeCasesMissed.length > 0 && (
+                    <div className="p-3 rounded-xl bg-amber-950/20 border border-amber-900/40">
+                      <div className="text-[11px] font-semibold text-amber-400 mb-1 flex items-center space-x-1">
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                        <span>Boundary Warnings / Missed Cases:</span>
+                      </div>
+                      <ul className="text-xs text-slate-300 space-y-1">
+                        {submission.evaluation.edgeCasesMissed.map((m, i) => (
+                          <li key={i}>• {m}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
+                {submission.evaluation.suggestedOptimization && (
+                  <div className="p-3 rounded-xl bg-violet-950/20 border border-violet-900/40 text-xs text-violet-200">
+                    <strong className="text-violet-400">Optimization Advice: </strong>
+                    {submission.evaluation.suggestedOptimization}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

@@ -7,6 +7,7 @@ import {
   InterviewExchange,
   DifficultyLevel,
   InterviewType,
+  CodingSubmission,
 } from '@/types/interview';
 import {
   generateFallbackAnalysis,
@@ -166,27 +167,28 @@ export async function generateInterviewQuestions(
         },
       });
 
-      const prompt = `You are a Principal Engineering Interviewer conducting a rigorous, skill-stage mock interview.
-Your task: Identify the top ${count} most critical skills required by this role (e.g. Skill 1: React, Skill 2: Node.js, Skill 3: PostgreSQL, Skill 4: Redis / System Scaling).
-Then generate EXACTLY ${count} questions organized into sequential SKILL STAGES (Sections) so the candidate is tested on each primary skill step-by-step.
+      const prompt = `You are a Principal Engineering Interviewer conducting a realistic, progressive technical interview.
+Generate EXACTLY ${count} questions organized into progressive SKILL STAGES:
 
-STRICT STAGE AND QUESTION RULES:
-- Identify the most important technical skills demanded by the Job Description and matched in the Resume.
-- Assign each question to a distinct "skillStage" (e.g., "Stage 1: React & Next.js Architecture", "Stage 2: Node.js Microservices", "Stage 3: PostgreSQL & Query Optimization", "Stage 4: Distributed Caching & High Scale").
-- NEVER ask generic questions like "Tell me about React" or "How do you handle errors?".
-- ALWAYS formulate deep, practical engineering scenarios with realistic constraints (e.g., high traffic, p95 latency, cache invalidation, race conditions, memory leaks).
-- Make questions challenging and realistic for difficulty level: ${difficulty.toUpperCase()}.
+PROGRESSION STAGES:
+- QUESTION 1 MUST BE FOUNDATIONAL: "Stage 1: Core Fundamentals & Most-Asked Questions". Focus on core language/runtime fundamentals (e.g. JavaScript Event Loop, closures, prototype chain, React re-render mechanics, memory lifecycle, async microtasks).
+- QUESTION 2: "Stage 2: Applied Component / Service Architecture". Focus on designing scalable APIs, state management, or microservice boundaries.
+- QUESTION 3+: "Stage 3+: Production Scenarios, Bottlenecks & Incident Triage". Focus on high-concurrency traffic spikes, latency profiling, and distributed failure mitigation.
+
+STRICT RULES:
+- Frame each question conversationally, as an interviewer addressing the candidate directly.
+- Include concrete technical terms, but start from core fundamentals before jumping to complex edge-cases.
 
 Return strictly a JSON array of questions with this schema:
 [
   {
     "id": "q1",
-    "skillStage": "Stage 1: React & Frontend Architecture",
-    "text": "The exact interview question testing this specific skill",
-    "type": "job-requirement" | "resume-project" | "behavioral",
-    "category": "e.g. React Concurrency / State Hydration",
-    "targetSkillOrProject": "e.g. React 18 / Next.js",
-    "difficulty": "${difficulty}",
+    "skillStage": "Stage 1: Core Fundamentals & Most-Asked Concepts",
+    "text": "The exact interview question",
+    "type": "fundamental" | "job-requirement" | "resume-project",
+    "category": "e.g. JavaScript Runtime / Event Loop",
+    "targetSkillOrProject": "e.g. JavaScript & React Core",
+    "difficulty": "beginner",
     "suggestedDurationSeconds": 120
   }
 ]
@@ -378,16 +380,40 @@ export async function generateFinalEvaluation(
   history: InterviewExchange[],
   analysis: CandidateAnalysis,
   jobDescription: string,
-  customApiKey?: string
+  customApiKey?: string,
+  codingSubmissions?: CodingSubmission[]
 ): Promise<{ report: FinalEvaluationReport; source: 'gemini' | 'fallback' }> {
   const client = getGeminiClient(customApiKey);
 
   if (!client) {
     return {
-      report: generateFallbackFinalReport(history, analysis),
+      report: generateFallbackFinalReport(history, analysis, codingSubmissions),
       source: 'fallback',
     };
   }
+
+  const avgCodingScore = codingSubmissions && codingSubmissions.length > 0
+    ? Math.round(codingSubmissions.reduce((sum, s) => sum + (s.evaluation.score || 0), 0) / codingSubmissions.length)
+    : undefined;
+
+  const codingSummary = codingSubmissions && codingSubmissions.length > 0
+    ? `LIVE CODING ASSESSMENT ROUND (${codingSubmissions.length} Challenges):
+${JSON.stringify(codingSubmissions.map((s, i) => ({
+  challengeIndex: i + 1,
+  title: s.challenge.title,
+  difficulty: s.challenge.difficulty,
+  skill: s.challenge.skillCategory,
+  score: s.evaluation.score,
+  verdict: s.evaluation.passed ? 'PASSED' : 'NEEDS OPTIMIZATION',
+  timeComplexity: s.evaluation.timeComplexity,
+  spaceComplexity: s.evaluation.spaceComplexity,
+  correctness: `${s.evaluation.correctnessScore}%`,
+  feedback: s.evaluation.feedback,
+  edgeCasesCovered: s.evaluation.edgeCasesCovered,
+  edgeCasesMissed: s.evaluation.edgeCasesMissed,
+  submittedCode: s.code.slice(0, 350),
+})), null, 2)}`
+    : 'No live coding round conducted.';
 
   for (const modelName of GEMINI_MODELS) {
     try {
@@ -419,6 +445,9 @@ export async function generateFinalEvaluation(
 INTERVIEW HISTORY & EVALUATIONS:
 ${JSON.stringify(summaryHistory, null, 2)}
 
+CODING ASSESSMENT:
+${codingSummary}
+
 CANDIDATE ANALYSIS:
 ${JSON.stringify(analysis, null, 2).slice(0, 2500)}
 
@@ -427,6 +456,7 @@ ${jobDescription.slice(0, 2500)}
 
 CRITICAL GRADING:
 - Calculate realistic averages from the interview scores.
+${avgCodingScore !== undefined ? `- The candidate completed a live coding round with an average score of ${avgCodingScore}/100. Blend verbal and coding performance (approx. 60% verbal, 40% coding) into overallScore, and explicitly address both practical implementation skills and conceptual understanding in performanceSummary, strengths, and weaknesses.` : ''}
 - If the candidate gave poor answers or gibberish, the overall score and rubric MUST reflect that faithfully.
 - If overall score < 50, hiring recommendation MUST be "Not Ready Yet".
 - If overall score 50-69, "Borderline / Needs Follow-up".
@@ -489,8 +519,10 @@ Provide a thorough, research-grade evaluation report formatted strictly as a JSO
       return {
         report: {
           ...report,
+          codingScore: avgCodingScore,
+          codingSubmissions: codingSubmissions || [],
           completedAt: report.completedAt || new Date().toISOString(),
-          totalTimeMinutes: report.totalTimeMinutes || Math.max(2, Math.round(history.length * 2.5)),
+          totalTimeMinutes: report.totalTimeMinutes || Math.max(2, Math.round(history.length * 2.5 + (codingSubmissions?.length || 0) * 3)),
         },
         source: 'gemini',
       };
@@ -500,7 +532,7 @@ Provide a thorough, research-grade evaluation report formatted strictly as a JSO
   }
 
   return {
-    report: generateFallbackFinalReport(history, analysis),
+    report: generateFallbackFinalReport(history, analysis, codingSubmissions),
     source: 'fallback',
   };
 }

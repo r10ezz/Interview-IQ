@@ -1,6 +1,6 @@
 export type InterviewType = 'technical' | 'hr' | 'mixed';
 export type DifficultyLevel = 'beginner' | 'intermediate' | 'advanced';
-export type QuestionType = 'job-requirement' | 'resume-project' | 'behavioral' | 'follow-up';
+export type QuestionType = 'job-requirement' | 'resume-project' | 'behavioral' | 'follow-up' | 'fundamental';
 
 export interface ProjectInfo {
   name: string;
@@ -27,7 +27,7 @@ export interface InterviewQuestion {
   type: QuestionType;
   category: string;
   targetSkillOrProject: string;
-  skillStage?: string; // e.g. "Section 1: React & Next.js"
+  skillStage?: string; // e.g. "Stage 1: Core Fundamentals & Syntax", "Stage 2: Architecture", etc.
   difficulty: DifficultyLevel;
   followUpContext?: string;
   suggestedDurationSeconds?: number;
@@ -51,6 +51,43 @@ export interface InterviewExchange {
   evaluation: AnswerEvaluation;
   answeredAt: string;
   timeSpentSeconds?: number;
+}
+
+export interface CodingTestCase {
+  input: string;
+  expectedOutput: string;
+  explanation?: string;
+}
+
+export interface CodingChallenge {
+  id: string;
+  title: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  skillCategory: string; // e.g. "React / Hooks", "Node.js / Async"
+  description: string;
+  starterCode: string;
+  language: string; // 'typescript' | 'javascript' | 'python'
+  sampleTestCases: CodingTestCase[];
+}
+
+export interface CodingEvaluation {
+  score: number; // 0-100
+  passed: boolean;
+  correctnessScore: number;
+  timeComplexity: string; // e.g. "O(N)"
+  spaceComplexity: string; // e.g. "O(1)"
+  codeQuality: number;
+  feedback: string;
+  edgeCasesCovered: string[];
+  edgeCasesMissed: string[];
+  suggestedOptimization?: string;
+}
+
+export interface CodingSubmission {
+  challenge: CodingChallenge;
+  code: string;
+  evaluation: CodingEvaluation;
+  submittedAt: string;
 }
 
 export interface QuestionBreakdownItem {
@@ -90,6 +127,8 @@ export interface FinalEvaluationReport {
   answerRelevance: number;
   technicalDepth: number;
   communicationClarity: number;
+  codingScore?: number;
+  codingSubmissions?: CodingSubmission[];
   hiringRecommendation: 'Strong Hire' | 'Hire' | 'Borderline / Needs Follow-up' | 'Not Ready Yet';
   performanceSummary: string;
   strengths: string[];
@@ -107,7 +146,8 @@ export interface InterviewSetupConfig {
   jobDescription: string;
   interviewType: InterviewType;
   difficulty: DifficultyLevel;
-  questionCount: number; // 3, 5, or 7
+  questionCount: number;
   candidateName?: string;
   jobTitle?: string;
+  includeCodingRound?: boolean;
 }
