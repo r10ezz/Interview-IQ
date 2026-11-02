@@ -171,66 +171,70 @@ export function generateFallbackQuestions(
   analysis: CandidateAnalysis,
   interviewType: InterviewType,
   difficulty: DifficultyLevel,
-  count: number = 5
+  count: number = 4
 ): InterviewQuestion[] {
-  const topMatchSkill = analysis.matchingSkills[0] || 'React & TypeScript';
-  const secondMatchSkill = analysis.matchingSkills[1] || 'Node.js & PostgreSQL';
-  const topProject = analysis.projects[0]?.name || 'Multi-Tenant Analytics Engine';
+  const skills = [
+    ...analysis.matchingSkills,
+    ...analysis.missingSkills,
+    ...analysis.technicalSkills
+  ];
+
+  const skill1 = skills[0] || 'React & Frontend Architecture';
+  const skill2 = skills[1] || 'Node.js & Backend Microservices';
+  const skill3 = skills[2] || 'PostgreSQL & Database Design';
+  const skill4 = skills[3] || 'Distributed Caching & Redis';
+  const topProject = analysis.projects[0]?.name || 'Primary Production Project';
 
   const bank: InterviewQuestion[] = [
     {
       id: 'q1',
+      skillStage: `Stage 1: ${skill1}`,
       type: 'job-requirement',
-      category: 'System Architecture & Concurrency',
-      targetSkillOrProject: topMatchSkill,
+      category: `${skill1} Architecture`,
+      targetSkillOrProject: skill1,
       difficulty,
       suggestedDurationSeconds: 120,
-      text: `In a production system built with ${topMatchSkill}, how would you architect a distributed caching strategy to handle a 10x traffic spike while preventing cache stampedes and stale reads across concurrent user sessions?`,
+      text: `Let's test your depth in ${skill1}. In a high-traffic production application requiring sub-second response times, what architectural pattern do you employ to manage state synchronization, prevent unnecessary re-renders, and ensure data integrity?`,
     },
     {
       id: 'q2',
-      type: 'resume-project',
-      category: 'Production Bottlenecks & Profiling',
-      targetSkillOrProject: topProject,
+      skillStage: `Stage 2: ${skill2}`,
+      type: 'job-requirement',
+      category: `${skill2} Design & APIs`,
+      targetSkillOrProject: skill2,
       difficulty,
-      suggestedDurationSeconds: 150,
-      text: `In your resume project "${topProject}", what was the single most challenging performance or latency bottleneck you diagnosed? Walk me through your profiling methodology, the root cause, and the measurable outcome.`,
+      suggestedDurationSeconds: 120,
+      text: `Moving to ${skill2}. When building high-throughput microservices that communicate under concurrent user load, how do you handle partial service degradation, retry storms, and circuit breaking?`,
     },
     {
       id: 'q3',
-      type: 'job-requirement',
-      category: 'Data Consistency & Transactions',
-      targetSkillOrProject: secondMatchSkill,
+      skillStage: `Stage 3: ${skill3}`,
+      type: 'resume-project',
+      category: `${skill3} & Practical Bottlenecks`,
+      targetSkillOrProject: topProject,
       difficulty,
-      suggestedDurationSeconds: 120,
-      text: `When designing services with ${secondMatchSkill}, how do you ensure data consistency during distributed transactions or partial network failures? What specific patterns (e.g. idempotent consumers, saga pattern, two-phase commits) do you employ?`,
+      suggestedDurationSeconds: 150,
+      text: `In your project "${topProject}", you implemented ${skill3}. Walk me through a critical database query bottleneck or concurrency race condition you diagnosed. What was your indexing, locking, or query restructuring strategy?`,
     },
     {
       id: 'q4',
-      type: 'resume-project',
-      category: 'Architectural Trade-offs',
-      targetSkillOrProject: analysis.technicalSkills[1] || 'State Management',
+      skillStage: `Stage 4: ${skill4}`,
+      type: 'job-requirement',
+      category: `${skill4} & Scalability`,
+      targetSkillOrProject: skill4,
       difficulty,
       suggestedDurationSeconds: 120,
-      text: `Describe a specific scenario where you had to compromise between engineering purity and operational speed or delivery constraints. What technical debt did you knowingly accept, and how did you mitigate its risk?`,
+      text: `Next, evaluating ${skill4}. How do you architect a multi-tiered caching layer to prevent cache stampedes (dogpile effect) when high-cardinality keys expire simultaneously during traffic spikes?`,
     },
     {
       id: 'q5',
+      skillStage: `Stage 5: Engineering Decision-Making & Trade-offs`,
       type: 'behavioral',
-      category: 'Technical Disagreement & Influence',
-      targetSkillOrProject: 'Engineering Alignment',
+      category: 'Technical Leadership & Alignment',
+      targetSkillOrProject: 'Architectural Trade-offs',
       difficulty: 'intermediate',
       suggestedDurationSeconds: 120,
-      text: `Tell me about a time when you strongly disagreed with a senior engineer or architect regarding a database schema or API design choice. How did you structure your technical argument, and what was the ultimate resolution?`,
-    },
-    {
-      id: 'q6',
-      type: 'job-requirement',
-      category: 'Resilience & Disaster Recovery',
-      targetSkillOrProject: 'Production Outages',
-      difficulty,
-      suggestedDurationSeconds: 120,
-      text: `If a core production API suddenly degrades with p99 latency jumping from 100ms to 4500ms and connection pools exhausting, what is your step-by-step diagnostic sequence from triage to post-mortem?`,
+      text: `Describe a situation where delivery timelines forced you to make a technical trade-off between architectural scalability and rapid shipment. What technical debt did you accept, and how did you measure and address it post-launch?`,
     }
   ];
 

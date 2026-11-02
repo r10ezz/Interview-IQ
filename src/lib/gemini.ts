@@ -166,30 +166,26 @@ export async function generateInterviewQuestions(
         },
       });
 
-      const prompt = `You are a Principal Engineering Interviewer conducting a rigorous, non-generic mock interview.
-Based on the candidate's analysis, resume, and job description, formulate EXACTLY ${count} deeply personalized interview questions.
+      const prompt = `You are a Principal Engineering Interviewer conducting a rigorous, skill-stage mock interview.
+Your task: Identify the top ${count} most critical skills required by this role (e.g. Skill 1: React, Skill 2: Node.js, Skill 3: PostgreSQL, Skill 4: Redis / System Scaling).
+Then generate EXACTLY ${count} questions organized into sequential SKILL STAGES (Sections) so the candidate is tested on each primary skill step-by-step.
 
-IMPORTANT RULES FOR QUESTIONS:
+STRICT STAGE AND QUESTION RULES:
+- Identify the most important technical skills demanded by the Job Description and matched in the Resume.
+- Assign each question to a distinct "skillStage" (e.g., "Stage 1: React & Next.js Architecture", "Stage 2: Node.js Microservices", "Stage 3: PostgreSQL & Query Optimization", "Stage 4: Distributed Caching & High Scale").
 - NEVER ask generic questions like "Tell me about React" or "How do you handle errors?".
-- ALWAYS anchor questions to CONCRETE technologies, projects, metrics, or architectural constraints mentioned in the resume and job requirements.
-- Example of good question: "In your resume, you described building a real-time analytics dashboard with Next.js and Redis serving 120k MAU. When caching dynamic widgets with varying permission scopes, how specifically did you prevent cache poisoning across tenants while keeping cache invalidation latency under 50ms?"
+- ALWAYS formulate deep, practical engineering scenarios with realistic constraints (e.g., high traffic, p95 latency, cache invalidation, race conditions, memory leaks).
 - Make questions challenging and realistic for difficulty level: ${difficulty.toUpperCase()}.
-
-Question distribution:
-${interviewType === 'technical' ? `- All ${count} questions must be Technical (System design, performance bottlenecks, race conditions, architecture)` : ''}
-${interviewType === 'hr' ? `- All ${count} questions must be Behavioral & Leadership (STAR method, trade-offs, disagreements, accountability)` : ''}
-${interviewType === 'mixed' ? `- 2 questions strictly targeting key job requirements & system design
-- 2 questions strictly targeting the candidate's actual projects/claims from their resume
-- 1 behavioral / leadership question targeting engineering decision-making` : ''}
 
 Return strictly a JSON array of questions with this schema:
 [
   {
     "id": "q1",
-    "text": "The exact interview question text",
+    "skillStage": "Stage 1: React & Frontend Architecture",
+    "text": "The exact interview question testing this specific skill",
     "type": "job-requirement" | "resume-project" | "behavioral",
-    "category": "e.g. Distributed Caching / State Synchronization / Concurrency Control",
-    "targetSkillOrProject": "e.g. Redis Caching / DevFlow Kanban",
+    "category": "e.g. React Concurrency / State Hydration",
+    "targetSkillOrProject": "e.g. React 18 / Next.js",
     "difficulty": "${difficulty}",
     "suggestedDurationSeconds": 120
   }

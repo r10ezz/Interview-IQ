@@ -354,6 +354,7 @@ export default function Home() {
             questionIndex={currentQuestionIndex}
             totalQuestions={setupConfig.questionCount}
             currentDifficulty={currentDifficulty}
+            allQuestions={allQuestions}
             onSubmitAnswer={handleSubmitAnswer}
             onFinishInterview={handleGenerateFinalEvaluation}
             isEvaluating={isEvaluatingAnswer}

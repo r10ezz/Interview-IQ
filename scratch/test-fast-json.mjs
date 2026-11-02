@@ -10,3 +10,4 @@ console.time('json-eval');
 const result = await model.generateContent('Return a valid JSON object with key "status" set to "ready" and "latency" set to "ultra-fast".');
 console.timeEnd('json-eval');
 console.log(result.response.text());
+

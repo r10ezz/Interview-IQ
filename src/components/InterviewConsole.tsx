@@ -5,11 +5,9 @@ import {
   Mic,
   MicOff,
   Send,
-  Sliders,
   CheckCircle2,
   TrendingUp,
   TrendingDown,
-  Info,
   Clock,
   Sparkles,
   Award,
@@ -17,6 +15,7 @@ import {
   Volume2,
   VolumeX,
   AlertCircle,
+  Layers,
 } from 'lucide-react';
 import {
   InterviewQuestion,
@@ -29,6 +28,7 @@ interface InterviewConsoleProps {
   questionIndex: number;
   totalQuestions: number;
   currentDifficulty: DifficultyLevel;
+  allQuestions?: InterviewQuestion[];
   onSubmitAnswer: (answer: string) => Promise<{
     evaluation: AnswerEvaluation;
     nextQuestion: InterviewQuestion | null;
@@ -46,6 +46,7 @@ export default function InterviewConsole({
   questionIndex,
   totalQuestions,
   currentDifficulty,
+  allQuestions = [],
   onSubmitAnswer,
   onFinishInterview,
   isEvaluating,
@@ -72,16 +73,15 @@ export default function InterviewConsole({
 
   const recognitionRef = useRef<any>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const committedBaseTextRef = useRef<string>('');
 
   // Check TTS and STT support on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      // 1. Check Text-to-Speech (speechSynthesis)
       if ('speechSynthesis' in window) {
         setTtsSupported(true);
       }
 
-      // 2. Check Speech-to-Text (SpeechRecognition)
       const SpeechRecognition =
         (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       if (SpeechRecognition) {
@@ -92,28 +92,35 @@ export default function InterviewConsole({
           recognition.interimResults = true;
           recognition.lang = 'en-US';
 
+          // Correct, non-spamming Speech Recognition handler:
+          // Separates committed final phrases from interim transcript
           recognition.onresult = (event: any) => {
-            let transcript = '';
+            let finalPhrase = '';
+            let interimPhrase = '';
+
             for (let i = event.resultIndex; i < event.results.length; i++) {
-              transcript += event.results[i][0].transcript;
+              const text = event.results[i][0].transcript;
+              if (event.results[i].isFinal) {
+                finalPhrase += text + ' ';
+              } else {
+                interimPhrase += text;
+              }
             }
-            if (transcript) {
-              setAnswerText((prev) => {
-                const trimmed = prev.trim();
-                return trimmed ? `${trimmed} ${transcript.trim()}` : transcript.trim();
-              });
+
+            if (finalPhrase) {
+              const base = committedBaseTextRef.current.trim();
+              committedBaseTextRef.current = base ? `${base} ${finalPhrase.trim()}` : finalPhrase.trim();
             }
+
+            const currentCombined = (committedBaseTextRef.current + ' ' + interimPhrase).trim();
+            setAnswerText(currentCombined);
           };
 
           recognition.onerror = (e: any) => {
             console.warn('Speech recognition error:', e.error);
             setIsRecording(false);
             if (e.error === 'not-allowed') {
-              setMicError('Microphone permission was denied. Please allow mic access in your browser.');
-            } else if (e.error === 'no-speech') {
-              // Ignore benign timeout
-            } else {
-              setMicError(`Voice input error: ${e.error}`);
+              setMicError('Microphone permission blocked. Please enable microphone permissions in your browser.');
             }
           };
 
@@ -133,16 +140,15 @@ export default function InterviewConsole({
   const speakQuestion = (text: string) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
 
-    window.speechSynthesis.cancel(); // Stop any ongoing speech
+    window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.95; // Clear and natural pace
+    utterance.rate = 1.0;
     utterance.pitch = 1.0;
 
-    // Pick a natural English voice if available
     const voices = window.speechSynthesis.getVoices();
     const naturalVoice = voices.find(
-      (v) => v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Samantha'))
+      (v) => v.lang.startsWith('en') && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Samantha'))
     ) || voices.find((v) => v.lang.startsWith('en'));
 
     if (naturalVoice) utterance.voice = naturalVoice;
@@ -179,6 +185,7 @@ export default function InterviewConsole({
     stopSpeaking();
     setElapsedSeconds(0);
     setAnswerText('');
+    committedBaseTextRef.current = '';
     setLastExchange(null);
     setTimerActive(true);
     setMicError(null);
@@ -186,7 +193,7 @@ export default function InterviewConsole({
     if (autoRead && currentQuestion?.text) {
       setTimeout(() => {
         speakQuestion(currentQuestion.text);
-      }, 400);
+      }, 300);
     }
 
     if (textareaRef.current) {
@@ -212,13 +219,15 @@ export default function InterviewConsole({
         recognitionRef.current.stop();
       } catch {}
       setIsRecording(false);
+      setAnswerText(committedBaseTextRef.current.trim());
     } else {
+      committedBaseTextRef.current = answerText.trim();
       try {
         recognitionRef.current.start();
         setIsRecording(true);
       } catch (err) {
         console.error('Failed to start speech recognition:', err);
-        setMicError('Could not access microphone. Please ensure microphone permissions are enabled.');
+        setMicError('Could not start microphone. Check browser permissions.');
       }
     }
   };
@@ -252,52 +261,37 @@ export default function InterviewConsole({
   };
 
   const wordCount = answerText.trim() ? answerText.trim().split(/\s+/).length : 0;
-  const progressPercent = Math.min(100, Math.round(((questionIndex + 1) / totalQuestions) * 100));
 
-  const getDifficultyBadge = (diff: DifficultyLevel) => {
-    switch (diff) {
-      case 'beginner':
-        return 'bg-emerald-950/60 text-emerald-300 border-emerald-800/60';
-      case 'intermediate':
-        return 'bg-indigo-950/60 text-indigo-300 border-indigo-800/60';
-      case 'advanced':
-        return 'bg-violet-950/60 text-violet-300 border-violet-800/60';
-      default:
-        return 'bg-slate-900 text-slate-300 border-slate-700';
-    }
-  };
+  // Active skill stage name
+  const currentStageName = currentQuestion.skillStage || `Stage ${questionIndex + 1}: ${currentQuestion.targetSkillOrProject || currentQuestion.category}`;
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 animate-fade-in">
-      {/* Top Header Console */}
-      <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/60 border border-slate-800 mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-800/80">
+      {/* Top Header: Skill Stage Timeline */}
+      <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-slate-800 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
           <div className="flex items-center space-x-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md">
-              <Sparkles className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+              <Layers className="w-4 h-4" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="text-sm font-semibold text-white">
-                  Question {questionIndex + 1} of {totalQuestions}
+                <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
+                  {currentStageName}
                 </span>
-                <span
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider border ${getDifficultyBadge(
-                    currentDifficulty
-                  )}`}
-                >
-                  <Sliders className="w-2.5 h-2.5 inline mr-1" />
-                  {currentDifficulty} Difficulty
+                <span className="text-xs text-slate-500">•</span>
+                <span className="text-xs text-slate-400">
+                  Section {questionIndex + 1} of {totalQuestions}
                 </span>
               </div>
               <p className="text-[11px] text-slate-400">
-                Candidate: <span className="text-slate-200">{candidateName}</span>
+                Testing Skill: <strong className="text-slate-200">{currentQuestion.targetSkillOrProject || currentQuestion.category}</strong>
               </p>
             </div>
           </div>
 
           <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-950/80 border border-slate-800 text-xs font-mono text-slate-300">
+            <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 text-xs font-mono text-slate-300">
               <Clock className="w-3.5 h-3.5 text-indigo-400" />
               <span>{formatTimer(elapsedSeconds)}</span>
             </div>
@@ -305,125 +299,106 @@ export default function InterviewConsole({
             <button
               type="button"
               onClick={onFinishInterview}
-              className="text-xs text-slate-400 hover:text-rose-400 px-2.5 py-1.5 rounded-lg hover:bg-slate-800/60 transition-colors"
-              title="Finish interview and generate final report now"
+              className="text-xs text-slate-400 hover:text-rose-400 transition-colors"
+              title="Finish interview and generate final report"
             >
               End Early
             </button>
           </div>
         </div>
 
-        {/* Dynamic Progress Bar */}
-        <div className="mt-3 flex items-center space-x-3">
-          <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-            <div
-              className="bg-gradient-to-r from-indigo-500 via-violet-500 to-sky-400 h-1.5 rounded-full transition-all duration-500"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-          <span className="text-[11px] font-mono text-slate-400 shrink-0">
-            {progressPercent}%
-          </span>
+        {/* Minimalist Section Stages Indicators */}
+        <div className="mt-3 grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+          {Array.from({ length: totalQuestions }).map((_, idx) => {
+            const isCompleted = idx < questionIndex;
+            const isCurrent = idx === questionIndex;
+            return (
+              <div
+                key={idx}
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  isCompleted
+                    ? 'bg-emerald-500'
+                    : isCurrent
+                    ? 'bg-indigo-500 shadow-sm shadow-indigo-500'
+                    : 'bg-slate-800'
+                }`}
+              />
+            );
+          })}
         </div>
       </div>
 
-      {/* Main Question Card with Text-to-Speech (TTS) Voice Controls */}
-      <div className="p-6 sm:p-7 rounded-2xl bg-gradient-to-b from-slate-900/90 to-slate-900/40 border border-slate-800 shadow-xl mb-6">
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-800 text-indigo-300 border border-slate-700">
+      {/* Main Question Card */}
+      <div className="p-6 sm:p-7 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl mb-6">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center space-x-2">
+            <span className="px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-950 border border-indigo-800 text-indigo-300">
               {currentQuestion.category}
             </span>
-            <span className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-indigo-950/40 text-indigo-300 border border-indigo-800/40 capitalize">
-              {currentQuestion.type.replace('-', ' ')}
+            <span className="text-[11px] text-slate-400 capitalize">
+              {currentQuestion.difficulty} Level
             </span>
-            {currentQuestion.targetSkillOrProject && (
-              <span className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-violet-950/30 text-violet-300 border border-violet-800/30">
-                Focus: {currentQuestion.targetSkillOrProject}
-              </span>
-            )}
           </div>
 
-          {/* Text-to-Speech Audio Buttons */}
+          {/* Text-to-Speech (TTS) Voice Button */}
           {ttsSupported && (
-            <div className="flex items-center space-x-2">
-              <button
-                type="button"
-                onClick={() => {
-                  if (isSpeaking) {
-                    stopSpeaking();
-                  } else {
-                    speakQuestion(currentQuestion.text);
-                  }
-                }}
-                className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all ${
-                  isSpeaking
-                    ? 'bg-indigo-600 text-white border-indigo-500 animate-pulse'
-                    : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
-                }`}
-                title={isSpeaking ? 'Stop speaking' : 'Read question aloud using Text-to-Speech'}
-              >
-                {isSpeaking ? (
-                  <>
-                    <VolumeX className="w-3.5 h-3.5 text-white" />
-                    <span>Stop Voice</span>
-                  </>
-                ) : (
-                  <>
-                    <Volume2 className="w-3.5 h-3.5 text-indigo-400" />
-                    <span>🔊 Read Question Aloud</span>
-                  </>
-                )}
-              </button>
-
-              <label className="hidden sm:flex items-center space-x-1.5 text-[11px] text-slate-400 cursor-pointer pl-1">
-                <input
-                  type="checkbox"
-                  checked={autoRead}
-                  onChange={(e) => setAutoRead(e.target.checked)}
-                  className="rounded border-slate-700 text-indigo-600 focus:ring-0 bg-slate-900 w-3.5 h-3.5"
-                />
-                <span>Auto-read</span>
-              </label>
-            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (isSpeaking) {
+                  stopSpeaking();
+                } else {
+                  speakQuestion(currentQuestion.text);
+                }
+              }}
+              className={`inline-flex items-center space-x-1.5 px-3 py-1 rounded-lg border text-xs font-medium transition-all ${
+                isSpeaking
+                  ? 'bg-indigo-600 text-white border-indigo-500 animate-pulse'
+                  : 'bg-slate-800/80 hover:bg-slate-700 text-slate-200 border-slate-700'
+              }`}
+              title="Read question aloud"
+            >
+              {isSpeaking ? (
+                <>
+                  <VolumeX className="w-3.5 h-3.5" />
+                  <span>Stop Voice</span>
+                </>
+              ) : (
+                <>
+                  <Volume2 className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Listen to Question</span>
+                </>
+              )}
+            </button>
           )}
         </div>
 
-        {/* Follow-up banner if probing previous answer */}
-        {currentQuestion.type === 'follow-up' && (
-          <div className="mb-4 p-3 rounded-xl bg-violet-950/40 border border-violet-700/50 text-xs text-violet-200 flex items-start space-x-2">
-            <Info className="w-4 h-4 text-violet-400 shrink-0 mt-0.5" />
-            <div>
-              <span className="font-semibold text-white">Adaptive Follow-Up Probe: </span>
-              <span>{currentQuestion.followUpContext || 'Probing deeper into technical implementation nuances.'}</span>
-            </div>
-          </div>
-        )}
-
-        <h3 className="text-lg sm:text-xl font-semibold text-white leading-relaxed tracking-tight">
+        <h3 className="text-base sm:text-lg font-medium text-white leading-relaxed">
           {currentQuestion.text}
         </h3>
       </div>
 
-      {/* Instant Feedback Modal / Drawer if just evaluated */}
+      {/* Instant Feedback Drawer after Answering */}
       {lastExchange && (
-        <div className={`p-6 rounded-2xl bg-slate-900 border-2 shadow-2xl mb-6 animate-fade-in ${
+        <div className={`p-5 rounded-2xl bg-slate-900 border-2 shadow-xl mb-6 animate-fade-in ${
           lastExchange.evaluation.score === 0
-            ? 'border-rose-600/70 bg-rose-950/15'
+            ? 'border-rose-600/70 bg-rose-950/20'
             : lastExchange.evaluation.score < 50
             ? 'border-amber-600/60'
-            : 'border-indigo-600/50'
+            : 'border-emerald-600/60'
         }`}>
-          <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
             <div className="flex items-center space-x-2">
-              <Award className="w-5 h-5 text-indigo-400" />
-              <h4 className="text-sm font-semibold text-white">AI Evaluation & Adaptive Adjustment</h4>
+              <Award className="w-4 h-4 text-indigo-400" />
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+                Evaluation for this Section
+              </h4>
             </div>
             <div className="flex items-center space-x-2">
               <span className="text-xs text-slate-400">Score:</span>
               <span
-                className={`px-3 py-1 rounded-full text-xs font-bold border ${
-                  lastExchange.evaluation.score >= 80
+                className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+                  lastExchange.evaluation.score >= 75
                     ? 'bg-emerald-950 text-emerald-300 border-emerald-800'
                     : lastExchange.evaluation.score >= 50
                     ? 'bg-indigo-950 text-indigo-300 border-indigo-800'
@@ -435,72 +410,27 @@ export default function InterviewConsole({
             </div>
           </div>
 
-          <p className="text-xs sm:text-sm text-slate-300 leading-relaxed mb-4">
+          <p className="text-xs sm:text-sm text-slate-200 leading-relaxed mb-4">
             {lastExchange.evaluation.quickFeedback}
           </p>
 
-          {/* Difficulty change notice */}
-          {lastExchange.newDifficulty !== currentDifficulty && (
-            <div className="mb-4 p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300 flex items-center space-x-2">
-              {lastExchange.evaluation.score >= 80 ? (
-                <TrendingUp className="w-4 h-4 text-emerald-400" />
-              ) : (
-                <TrendingDown className="w-4 h-4 text-amber-400" />
-              )}
-              <span>
-                Adaptive Engine dynamically updated difficulty from{' '}
-                <strong className="text-white capitalize">{currentDifficulty}</strong> to{' '}
-                <strong className="text-indigo-400 capitalize">{lastExchange.newDifficulty}</strong>.
-              </span>
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4 text-center">
-            <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
-              <div className="text-[10px] text-slate-400">Correctness</div>
-              <div className={`text-xs font-semibold mt-0.5 ${lastExchange.evaluation.technicalCorrectness === 0 ? 'text-rose-400' : 'text-white'}`}>
-                {lastExchange.evaluation.technicalCorrectness}%
-              </div>
-            </div>
-            <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
-              <div className="text-[10px] text-slate-400">Relevance</div>
-              <div className={`text-xs font-semibold mt-0.5 ${lastExchange.evaluation.relevance === 0 ? 'text-rose-400' : 'text-white'}`}>
-                {lastExchange.evaluation.relevance}%
-              </div>
-            </div>
-            <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
-              <div className="text-[10px] text-slate-400">Depth</div>
-              <div className={`text-xs font-semibold mt-0.5 ${lastExchange.evaluation.depth === 0 ? 'text-rose-400' : 'text-white'}`}>
-                {lastExchange.evaluation.depth}%
-              </div>
-            </div>
-            <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
-              <div className="text-[10px] text-slate-400">Clarity</div>
-              <div className={`text-xs font-semibold mt-0.5 ${lastExchange.evaluation.clarity === 0 ? 'text-rose-400' : 'text-white'}`}>
-                {lastExchange.evaluation.clarity}%
-              </div>
-            </div>
-          </div>
-
-          <div className="flex justify-end pt-2">
+          <div className="flex justify-end pt-1">
             {lastExchange.isComplete ? (
               <button
                 type="button"
                 onClick={onFinishInterview}
-                className="inline-flex items-center space-x-2 px-6 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-600/30 transition-all"
+                className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md transition-all"
               >
-                <span>Generate Final Research Report</span>
+                <span>View Full Research Report</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
             ) : (
               <button
                 type="button"
-                onClick={() => {
-                  setLastExchange(null);
-                }}
-                className="inline-flex items-center space-x-2 px-6 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/30 transition-all"
+                onClick={() => setLastExchange(null)}
+                className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md transition-all"
               >
-                <span>Continue to Next Question</span>
+                <span>Proceed to Next Section</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
             )}
@@ -508,39 +438,40 @@ export default function InterviewConsole({
         </div>
       )}
 
-      {/* Answer Form */}
+      {/* Candidate Answer Form */}
       {!lastExchange && (
         <form onSubmit={handleFormSubmit} className="space-y-4">
-          <div className="relative">
+          <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs font-semibold text-slate-300">
-                Your Technical Response (Text or Voice)
+                Your Technical Response
               </label>
               <div className="flex items-center space-x-3 text-xs text-slate-400">
                 <span>{wordCount} words</span>
-                <span>•</span>
-                <span>{answerText.length} characters</span>
               </div>
             </div>
 
             <textarea
               ref={textareaRef}
               value={answerText}
-              onChange={(e) => setAnswerText(e.target.value)}
+              onChange={(e) => {
+                setAnswerText(e.target.value);
+                committedBaseTextRef.current = e.target.value;
+              }}
               disabled={isEvaluating}
-              placeholder="Type your structured answer here. Include architectural considerations, practical implementations, trade-offs, and lessons learned..."
-              rows={8}
-              className="w-full px-4 py-3.5 rounded-2xl bg-slate-900/70 border border-slate-700 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 leading-relaxed resize-y min-h-[160px] disabled:opacity-60"
+              placeholder="Explain your approach to this skill area. Focus on architectural choices, technical constraints, trade-offs, and metrics..."
+              rows={7}
+              className="w-full px-4 py-3 rounded-2xl bg-slate-900/80 border border-slate-700 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 leading-relaxed resize-y min-h-[150px] disabled:opacity-60"
             />
 
             {micError && (
-              <div className="mt-2 p-2.5 rounded-xl bg-rose-950/60 border border-rose-800 text-xs text-rose-300 flex items-center space-x-2">
-                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+              <div className="mt-2 p-2 rounded-xl bg-rose-950/60 border border-rose-800 text-xs text-rose-300 flex items-center space-x-2">
+                <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
                 <span>{micError}</span>
               </div>
             )}
 
-            {/* Speech-to-Text Recording Bar */}
+            {/* Voice Input Button */}
             {speechSupported && (
               <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
                 <button
@@ -555,44 +486,39 @@ export default function InterviewConsole({
                   {isRecording ? (
                     <>
                       <MicOff className="w-3.5 h-3.5 text-rose-400" />
-                      <span>Listening... (Click to stop)</span>
+                      <span>Recording voice... (Click to stop)</span>
                     </>
                   ) : (
                     <>
                       <Mic className="w-3.5 h-3.5 text-indigo-400" />
-                      <span>Voice Input (Speech-to-Text)</span>
+                      <span>Dictate with Microphone</span>
                     </>
                   )}
                 </button>
 
                 <span className="text-[11px] text-slate-500 hidden sm:inline">
-                  Tip: Use the STAR method (Situation, Task, Action, Result)
+                  Strict grading: random keystrokes receive 0/100
                 </span>
               </div>
             )}
           </div>
 
-          {/* Action Row */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-            <div className="text-[11px] text-slate-400 flex items-center space-x-1">
-              <CheckCircle2 className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Answers are graded with strict integrity: gibberish or empty claims receive 0/100.</span>
-            </div>
-
+          {/* Submit Button */}
+          <div className="flex items-center justify-end pt-2">
             <button
               type="submit"
               disabled={isEvaluating || !answerText.trim()}
-              className="w-full sm:w-auto inline-flex items-center justify-center space-x-2.5 px-7 py-3 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-900/60 disabled:cursor-not-allowed shadow-xl shadow-indigo-600/25 transition-all"
+              className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-6 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-900/60 disabled:cursor-not-allowed shadow-lg transition-all"
             >
               {isEvaluating ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Evaluating Response with AI...</span>
+                  <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Evaluating with Gemini AI...</span>
                 </>
               ) : (
                 <>
                   <span>Submit Response</span>
-                  <Send className="w-4 h-4" />
+                  <Send className="w-3.5 h-3.5 ml-1" />
                 </>
               )}
             </button>

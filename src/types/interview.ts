@@ -27,6 +27,7 @@ export interface InterviewQuestion {
   type: QuestionType;
   category: string;
   targetSkillOrProject: string;
+  skillStage?: string; // e.g. "Section 1: React & Next.js"
   difficulty: DifficultyLevel;
   followUpContext?: string;
   suggestedDurationSeconds?: number;
