@@ -20,7 +20,7 @@ import {
 import { getRoleBasedCodingChallenges } from './coding-challenges';
 
 // Available stable Gemini models in order of priority (Fastest first)
-const GEMINI_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest'];
+const GEMINI_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-3.5-flash'];
 
 function getGeminiClient(customApiKey?: string): GoogleGenerativeAI | null {
   const key = customApiKey || process.env.GEMINI_API_KEY;
@@ -30,12 +30,26 @@ function getGeminiClient(customApiKey?: string): GoogleGenerativeAI | null {
   return new GoogleGenerativeAI(key.trim());
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number = 7000): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`Gemini request timed out after ${ms}ms`)), ms)
+    ),
+  ]);
+}
+
 function cleanJsonText(raw: string): string {
   let cleaned = raw.trim();
-  // Remove markdown codeblock tags if present
   if (cleaned.startsWith('```')) {
     cleaned = cleaned.replace(/^```(?:json)?\n?/, '').replace(/```$/, '').trim();
   }
+  const match = cleaned.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+  if (match) {
+    cleaned = match[0];
+  }
+  // Strip trailing commas before closing braces/brackets
+  cleaned = cleaned.replace(/,\s*([}\]])/g, '$1');
   return cleaned;
 }
 
@@ -117,7 +131,7 @@ JOB DESCRIPTION:
 ${jobDescription.slice(0, 5000)}
 `;
 
-      const result = await model.generateContent(prompt);
+      const result = await withTimeout(model.generateContent(prompt), 7000);
       const responseText = result.response.text();
       const parsed = JSON.parse(cleanJsonText(responseText)) as CandidateAnalysis;
 
@@ -220,7 +234,7 @@ Generate EXACTLY ${count} questions. Format strictly as a JSON array matching th
 ]
 `;
 
-      const result = await model.generateContent(prompt);
+      const result = await withTimeout(model.generateContent(prompt), 7000);
       const parsed = JSON.parse(cleanJsonText(result.response.text())) as InterviewQuestion[];
 
       if (Array.isArray(parsed) && parsed.length > 0) {
@@ -333,7 +347,7 @@ Return strictly a JSON array matching this schema:
 ]
 `;
 
-      const result = await model.generateContent(prompt);
+      const result = await withTimeout(model.generateContent(prompt), 7000);
       const parsed = JSON.parse(cleanJsonText(result.response.text())) as CodingChallenge[];
 
       if (Array.isArray(parsed) && parsed.length >= 2) {
@@ -460,7 +474,7 @@ Return strictly a JSON object:
 }
 `;
 
-      const result = await model.generateContent(prompt);
+      const result = await withTimeout(model.generateContent(prompt), 7000);
       const parsed = JSON.parse(cleanJsonText(result.response.text()));
 
       const evaluation: AnswerEvaluation = {
@@ -642,7 +656,7 @@ Provide a thorough, research-grade evaluation report formatted strictly as a JSO
 }
 `;
 
-      const result = await model.generateContent(prompt);
+      const result = await withTimeout(model.generateContent(prompt), 7000);
       const report = JSON.parse(cleanJsonText(result.response.text())) as FinalEvaluationReport;
 
       return {

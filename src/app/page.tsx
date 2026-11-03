@@ -195,6 +195,8 @@ export default function Home() {
 
       if (data.codingChallenges && data.codingChallenges.length > 0) {
         setCodingChallenges(data.codingChallenges);
+      } else if (selectedRounds.includes('coding')) {
+        setCodingChallenges(DEFAULT_CODING_CHALLENGES);
       }
 
       setAllQuestions(data.questions || []);
@@ -391,7 +393,7 @@ export default function Home() {
             allQuestions={allQuestions}
             onSubmitAnswer={handleSubmitAnswer}
             onProceedToCoding={
-              setupConfig.selectedRounds?.includes('coding')
+              (setupConfig.selectedRounds?.includes('coding') || codingChallenges.length > 0)
                 ? () => setCurrentStep('coding')
                 : undefined
             }

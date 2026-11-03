@@ -9,6 +9,7 @@ import {
   Sparkles,
   Award,
   ChevronRight,
+  CheckCircle,
   Volume2,
   VolumeX,
   AlertCircle,
@@ -72,6 +73,29 @@ export default function InterviewConsole({
     newDifficulty: DifficultyLevel;
     isComplete: boolean;
   } | null>(null);
+
+  const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
+
+  // Auto-transition to coding round when verbal is complete
+  useEffect(() => {
+    if (lastExchange?.isComplete && onProceedToCoding) {
+      setCountdownSeconds(4);
+      const interval = setInterval(() => {
+        setCountdownSeconds((prev) => {
+          if (prev === null || prev <= 1) {
+            clearInterval(interval);
+            onProceedToCoding();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(interval);
+    } else {
+      setCountdownSeconds(null);
+    }
+  }, [lastExchange?.isComplete, onProceedToCoding]);
 
   const recognitionRef = useRef<any>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -245,11 +269,13 @@ export default function InterviewConsole({
     }
 
     setTimerActive(false);
+    setSubmissionError(null);
     try {
       const result = await onSubmitAnswer(answerText.trim());
       setLastExchange(result);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error submitting answer:', err);
+      setSubmissionError(err.message || 'Failed to submit response. Please try again.');
       setTimerActive(true);
     }
   };
@@ -435,23 +461,51 @@ export default function InterviewConsole({
           <div className="flex justify-end pt-1 gap-2">
             {lastExchange.isComplete ? (
               onProceedToCoding ? (
-                <button
-                  type="button"
-                  onClick={onProceedToCoding}
-                  className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-white bg-violet-600 hover:bg-violet-700 shadow-sm transition-all"
-                >
-                  <span>Proceed to Live Coding Round</span>
-                  <Code2 className="w-4 h-4" />
-                </button>
+                <div className="w-full mt-2 pt-4 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center space-x-2.5 text-violet-700">
+                    <Sparkles className="w-5 h-5 shrink-0 text-violet-600" />
+                    <div>
+                      <p className="text-xs sm:text-sm font-bold text-slate-900">
+                        Verbal & Foundation Round Complete!
+                      </p>
+                      <p className="text-[11px] text-slate-500">
+                        {countdownSeconds !== null && countdownSeconds > 0
+                          ? `Auto-launching Live Coding Round in ${countdownSeconds}s...`
+                          : 'Ready to start live technical problem solving.'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={onProceedToCoding}
+                    className="inline-flex items-center justify-center space-x-2 px-6 py-3 rounded-xl text-xs sm:text-sm font-bold text-white bg-violet-600 hover:bg-violet-700 shadow-md shadow-violet-600/25 transition-all shrink-0"
+                  >
+                    <span>Proceed to Live Coding Round</span>
+                    <Code2 className="w-4 h-4 ml-1" />
+                  </button>
+                </div>
               ) : (
-                <button
-                  type="button"
-                  onClick={onFinishInterview}
-                  className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm transition-all"
-                >
-                  <span>View Full Performance Report</span>
-                  <ChevronRight className="w-4 h-4" />
-                </button>
+                <div className="w-full mt-2 pt-4 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center space-x-2.5 text-emerald-700">
+                    <CheckCircle className="w-5 h-5 shrink-0 text-emerald-600" />
+                    <div>
+                      <p className="text-xs sm:text-sm font-bold text-slate-900">
+                        Interview Session Complete!
+                      </p>
+                      <p className="text-[11px] text-slate-500">
+                        All question rounds answered. Ready to generate lead evaluation report.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={onFinishInterview}
+                    className="inline-flex items-center justify-center space-x-2 px-6 py-3 rounded-xl text-xs sm:text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-600/25 transition-all shrink-0"
+                  >
+                    <span>View Full Performance Report</span>
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </button>
+                </div>
               )
             ) : (
               <button
@@ -493,6 +547,13 @@ export default function InterviewConsole({
               rows={7}
               className="w-full px-3.5 py-3 rounded-xl bg-slate-50 border border-slate-300 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 leading-relaxed resize-y min-h-[140px] disabled:opacity-60"
             />
+
+            {submissionError && (
+              <div className="mt-2 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-center space-x-2">
+                <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                <span>{submissionError}</span>
+              </div>
+            )}
 
             {micError && (
               <div className="mt-2 p-2 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-center space-x-2">
