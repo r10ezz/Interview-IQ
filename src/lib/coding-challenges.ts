@@ -1,12 +1,13 @@
-import { CodingChallenge, CodingEvaluation } from '@/types/interview';
+import { CodingChallenge, CodingEvaluation, DifficultyLevel } from '@/types/interview';
 
 export const ROLE_DSA_CHALLENGES: CodingChallenge[] = [
+  // ==================== TIER 1: BEGINNER (ARRAYS & STRINGS) ====================
   {
     id: 'dsa-two-sum',
     title: 'Two Sum — Target Pair Indices',
     difficulty: 'Easy',
     topicTags: ['Array', 'Hash Table', 'Two Pointers'],
-    skillCategory: 'Core Data Structures',
+    skillCategory: 'Arrays & Hashing',
     description: `Given an array of integers \`nums\` and an integer \`target\`, return the indices of the two numbers such that they add up to \`target\`.
 
 You may assume that each input would have **exactly one solution**, and you may not use the same element twice. You can return the answer in any order.
@@ -33,7 +34,7 @@ An optimal solution must run in **O(n)** time complexity using a single pass wit
     ],
     language: 'typescript',
     starterCode: `function twoSum(nums: number[], target: number): number[] {
-  // Write your code here
+  // Write your solution here
   
 }`,
     sampleTestCases: [
@@ -55,66 +56,113 @@ An optimal solution must run in **O(n)** time complexity using a single pass wit
     ]
   },
   {
-    id: 'dsa-lru-cache',
-    title: 'LRU Cache (Least Recently Used)',
-    difficulty: 'Medium',
-    topicTags: ['Hash Table', 'Linked List', 'Doubly-Linked List', 'Design'],
-    skillCategory: 'System & Memory Algorithms',
-    description: `Design a data structure that follows the constraints of a **Least Recently Used (LRU) Cache**.
+    id: 'dsa-valid-palindrome',
+    title: 'Valid Palindrome (Alphanumeric)',
+    difficulty: 'Easy',
+    topicTags: ['String', 'Two Pointers'],
+    skillCategory: 'Strings & Two Pointers',
+    description: `A phrase is a **palindrome** if, after converting all uppercase letters into lowercase letters and removing all non-alphanumeric characters, it reads the same forward and backward. Alphanumeric characters include letters and numbers.
 
-Implement the \`LRUCache\` class:
-- \`LRUCache(int capacity)\`: Initialize the LRU cache with positive size \`capacity\`.
-- \`int get(int key)\`: Return the value of the \`key\` if the key exists, otherwise return \`-1\`. Accessing a key marks it as most recently used.
-- \`void put(int key, int value)\`: Update the value of the \`key\` if the \`key\` exists. Otherwise, add the \`key-value\` pair to the cache. If the number of keys exceeds the \`capacity\` from this operation, **evict the least recently used key**.
-
-The functions \`get\` and \`put\` must each run in **O(1)** average time complexity.`,
+Given a string \`s\`, return \`true\` if it is a palindrome, or \`false\` otherwise.`,
     examples: [
       {
-        input: '["LRUCache", "put", "put", "get", "put", "get", "put", "get", "get", "get"]\n[[2], [1, 1], [2, 2], [1], [3, 3], [2], [4, 4], [1], [3], [4]]',
-        output: '[null, null, null, 1, null, -1, null, -1, 3, 4]',
-        explanation: 'cache.put(1, 1); cache.put(2, 2); cache.get(1) returns 1; cache.put(3, 3) evicts key 2; cache.get(2) returns -1 (not found).'
+        input: 's = "A man, a plan, a canal: Panama"',
+        output: 'true',
+        explanation: '"amanaplanacanalpanama" is a palindrome.'
+      },
+      {
+        input: 's = "race a car"',
+        output: 'false',
+        explanation: '"raceacar" is not a palindrome.'
+      },
+      {
+        input: 's = " "',
+        output: 'true',
+        explanation: 'An empty string reads the same forward and backward.'
       }
     ],
     constraints: [
-      '1 <= capacity <= 3000',
-      '0 <= key <= 10^4',
-      '0 <= value <= 10^5',
-      'At most 2 * 10^5 calls will be made to get and put.',
-      'O(1) time complexity for both get and put operations.'
+      '1 <= s.length <= 2 * 10^5',
+      's consists only of printable ASCII characters.',
+      'Optimal Time: O(n), Space: O(1)'
     ],
     language: 'typescript',
-    starterCode: `class LRUCache {
-  constructor(capacity: number) {
-    // Initialize your LRU Cache here
-  }
-
-  get(key: number): number {
-    return -1;
-  }
-
-  put(key: number, value: number): void {
-    
-  }
+    starterCode: `function isPalindrome(s: string): boolean {
+  // Write your solution here
+  return false;
 }`,
     sampleTestCases: [
       {
-        input: 'capacity = 2, put(1, 1), put(2, 2), get(1)',
-        expectedOutput: '1',
-        explanation: 'Key 1 exists and returns 1.'
+        input: 's = "A man, a plan, a canal: Panama"',
+        expectedOutput: 'true',
+        explanation: 'Alphanumeric letters match'
       },
       {
-        input: 'put(3, 3) after capacity reached',
-        expectedOutput: 'Evicts key 2 (least recently used)',
-        explanation: 'get(2) returns -1.'
+        input: 's = "race a car"',
+        expectedOutput: 'false',
+        explanation: 'Characters do not match in reverse'
+      },
+      {
+        input: 's = " "',
+        expectedOutput: 'true',
+        explanation: 'Empty or whitespace string is a palindrome'
       }
     ]
   },
   {
-    id: 'dsa-sliding-window',
+    id: 'dsa-best-time-stock',
+    title: 'Best Time to Buy and Sell Stock',
+    difficulty: 'Easy',
+    topicTags: ['Array', 'Dynamic Programming', 'Two Pointers'],
+    skillCategory: 'Arrays & Greedy',
+    description: `You are given an array \`prices\` where \`prices[i]\` is the price of a given stock on the \`i\`th day.
+
+You want to maximize your profit by choosing a **single day** to buy one stock and choosing a **different day in the future** to sell that stock.
+
+Return the maximum profit you can achieve from this transaction. If you cannot achieve any profit, return \`0\`.`,
+    examples: [
+      {
+        input: 'prices = [7, 1, 5, 3, 6, 4]',
+        output: '5',
+        explanation: 'Buy on day 2 (price = 1) and sell on day 5 (price = 6), profit = 6 - 1 = 5.'
+      },
+      {
+        input: 'prices = [7, 6, 4, 3, 1]',
+        output: '0',
+        explanation: 'In this case, no transactions are done and max profit = 0.'
+      }
+    ],
+    constraints: [
+      '1 <= prices.length <= 10^5',
+      '0 <= prices[i] <= 10^4',
+      'Optimal Time: O(n), Space: O(1)'
+    ],
+    language: 'typescript',
+    starterCode: `function maxProfit(prices: number[]): number {
+  // Write your solution here
+  return 0;
+}`,
+    sampleTestCases: [
+      {
+        input: 'prices = [7, 1, 5, 3, 6, 4]',
+        expectedOutput: '5',
+        explanation: 'Buy at 1, sell at 6 = 5'
+      },
+      {
+        input: 'prices = [7, 6, 4, 3, 1]',
+        expectedOutput: '0',
+        explanation: 'Decreasing prices, profit is 0'
+      }
+    ]
+  },
+
+  // ==================== TIER 2: INTERMEDIATE (STRINGS & SLIDING WINDOW) ====================
+  {
+    id: 'dsa-longest-substring',
     title: 'Longest Substring Without Repeating Characters',
     difficulty: 'Medium',
     topicTags: ['Hash Table', 'String', 'Sliding Window', 'Two Pointers'],
-    skillCategory: 'String Algorithms',
+    skillCategory: 'Strings & Sliding Window',
     description: `Given a string \`s\`, find the length of the **longest substring** without duplicate characters.
 
 A **substring** is a contiguous non-empty sequence of characters within a string.
@@ -144,7 +192,7 @@ You must solve this in **O(n)** time using the **Sliding Window** technique with
     ],
     language: 'typescript',
     starterCode: `function lengthOfLongestSubstring(s: string): number {
-  // Write your code here
+  // Write your solution here
   return 0;
 }`,
     sampleTestCases: [
@@ -159,116 +207,203 @@ You must solve this in **O(n)** time using the **Sliding Window** technique with
         explanation: 'Substring "wke"'
       },
       {
-        input: 's = "" (empty string)',
+        input: 's = ""',
         expectedOutput: '0',
         explanation: 'Empty string has length 0'
       }
     ]
   },
   {
-    id: 'dsa-token-bucket',
-    title: 'Token Bucket Rate Limiter',
-    difficulty: 'Medium',
-    topicTags: ['Design', 'System Architecture', 'Algorithms', 'Timestamp Math'],
-    skillCategory: 'Backend & Production Systems',
-    description: `Implement an in-memory Rate Limiter using the **Token Bucket** algorithm for high-concurrency API request throttling.
+    id: 'dsa-valid-parentheses',
+    title: 'Valid Parentheses',
+    difficulty: 'Easy',
+    topicTags: ['String', 'Stack'],
+    skillCategory: 'Strings & Stacks',
+    description: `Given a string \`s\` containing just the characters \`'('\`, \`')'\`, \`'{'\`, \`'}'\`, \`'['\` and \`']'\`, determine if the input string is valid.
 
-The rate limiter allows up to \`capacity\` requests in a burst and refills tokens at a continuous rate of \`refillRatePerSec\` tokens per second.
-
-**Requirements:**
-1. \`allowRequest(userId: string): boolean\` returns \`true\` if a token is available, consumes 1 token, and permits the call.
-2. If no tokens remain, returns \`false\` (rate limited).
-3. Tokens refill proportionally according to elapsed wall-clock time between requests up to maximum \`capacity\`.`,
+An input string is valid if:
+1. Open brackets must be closed by the same type of brackets.
+2. Open brackets must be closed in the correct order.
+3. Every close bracket has a corresponding open bracket of the same type.`,
     examples: [
       {
-        input: 'capacity = 5, refillRatePerSec = 1.0\nUser sends 5 rapid requests at t=0s',
-        output: '[true, true, true, true, true]',
-        explanation: 'All 5 burst tokens consumed.'
-      },
-      {
-        input: 'User sends 6th request at t=0s',
-        output: 'false',
-        explanation: 'Tokens exhausted; request is throttled.'
-      },
-      {
-        input: 'User waits 2.0 seconds and sends request',
+        input: 's = "()[]{}"',
         output: 'true',
-        explanation: '2 tokens refilled over 2 seconds; request is allowed.'
+        explanation: 'All brackets match in correct order.'
+      },
+      {
+        input: 's = "(]"',
+        output: 'false',
+        explanation: 'Mismatched closing bracket.'
       }
     ],
     constraints: [
-      '1 <= capacity <= 10^5',
-      '0.1 <= refillRatePerSec <= 10^4',
-      'Multiple users must be tracked independently in memory.',
-      'O(1) time complexity per request check.'
+      '1 <= s.length <= 10^4',
+      's consists of parentheses only "()[]{}"',
+      'Optimal Time: O(n), Space: O(n)'
     ],
     language: 'typescript',
-    starterCode: `class TokenBucketRateLimiter {
-  constructor(capacity: number, refillRatePerSec: number) {
-    // Write your code here
-  }
-
-  allowRequest(userId: string): boolean {
-    return false;
-  }
+    starterCode: `function isValid(s: string): boolean {
+  // Write your solution here
+  return false;
 }`,
     sampleTestCases: [
       {
-        input: '5 requests at t=0 with capacity=5',
-        expectedOutput: 'All return true',
-        explanation: 'Initial burst capacity permits all 5 calls.'
+        input: 's = "()[]{}"',
+        expectedOutput: 'true',
+        explanation: 'Valid bracket sequence'
       },
       {
-        input: '6th request with 0 tokens',
-        expectedOutput: 'returns false',
-        explanation: 'Rate limiter blocks overflow calls.'
+        input: 's = "(]"',
+        expectedOutput: 'false',
+        explanation: 'Mismatched bracket type'
+      }
+    ]
+  },
+
+  // ==================== TIER 3: ADVANCED (GRAPHS & TREES) ====================
+  {
+    id: 'dsa-number-of-islands',
+    title: 'Number of Islands (Grid Graph)',
+    difficulty: 'Medium',
+    topicTags: ['Graph', 'Breadth-First Search', 'Depth-First Search', 'Matrix'],
+    skillCategory: 'Graphs & BFS/DFS',
+    description: `Given an \`m x n\` 2D binary grid \`grid\` which represents a map of \`'1'\`s (land) and \`'0'\`s (water), return the number of islands.
+
+An **island** is surrounded by water and is formed by connecting adjacent lands horizontally or vertically. You may assume all four edges of the grid are all surrounded by water.`,
+    examples: [
+      {
+        input: 'grid = [["1","1","0"],["1","1","0"],["0","0","1"]]',
+        output: '2',
+        explanation: 'Two separate islands of land.'
+      },
+      {
+        input: 'grid = [["1","1","1"],["0","1","0"],["1","1","1"]]',
+        output: '1',
+        explanation: 'All connected lands form 1 island.'
+      }
+    ],
+    constraints: [
+      'm == grid.length',
+      'n == grid[i].length',
+      '1 <= m, n <= 300',
+      'grid[i][j] is "0" or "1".',
+      'Optimal Time: O(m * n), Space: O(m * n)'
+    ],
+    language: 'typescript',
+    starterCode: `function numIslands(grid: string[][]): number {
+  // Write your graph traversal solution here
+  return 0;
+}`,
+    sampleTestCases: [
+      {
+        input: 'grid = [["1","1","0"],["1","1","0"],["0","0","1"]]',
+        expectedOutput: '2',
+        explanation: 'Top-left cluster and bottom-right island'
+      },
+      {
+        input: 'grid = [["1","1","1"],["0","1","0"],["1","1","1"]]',
+        expectedOutput: '1',
+        explanation: 'Single connected component'
       }
     ]
   },
   {
-    id: 'dsa-debounce',
-    title: 'Custom Debounce Utility with Cancellation',
+    id: 'dsa-course-schedule',
+    title: 'Course Schedule (Cycle Detection in Graph)',
     difficulty: 'Medium',
-    topicTags: ['JavaScript', 'Closures', 'Async', 'Functional Programming'],
-    skillCategory: 'Frontend & Practical Runtime',
-    description: `Implement a production-grade \`debounce\` utility function in TypeScript.
+    topicTags: ['Graph', 'Depth-First Search', 'Topological Sort', 'Cycle Detection'],
+    skillCategory: 'Graphs & Topological Sort',
+    description: `There are a total of \`numCourses\` courses you have to take, labeled from \`0\` to \`numCourses - 1\`. You are given an array \`prerequisites\` where \`prerequisites[i] = [a, b]\` indicates that you must take course \`b\` first if you want to take course \`a\`.
 
-A debounced function delays invoking the target \`func\` until after \`wait\` milliseconds have elapsed since the last time the debounced function was called.
-
-**Requirements:**
-1. Reset the timer if called again before \`wait\` has elapsed.
-2. Preserve \`this\` execution context and forward all parameters.
-3. Attach a \`.cancel()\` method to immediately abort any pending timer execution.`,
+Return \`true\` if you can finish all courses. Otherwise, return \`false\` (if there is a cyclic dependency).`,
     examples: [
       {
-        input: 'debounce(fn, 200); called 3 times in 50ms',
-        output: 'fn executed exactly once after 200ms',
-        explanation: 'Repeated triggers reset the delay window.'
+        input: 'numCourses = 2, prerequisites = [[1, 0]]',
+        output: 'true',
+        explanation: 'Take course 0 then take course 1.'
+      },
+      {
+        input: 'numCourses = 2, prerequisites = [[1, 0], [0, 1]]',
+        output: 'false',
+        explanation: 'Cycle detected between courses 0 and 1.'
       }
     ],
     constraints: [
-      '0 <= wait <= 10^5 ms',
-      'Cancellation must clear pending setTimeout handle cleanly.'
+      '1 <= numCourses <= 2000',
+      '0 <= prerequisites.length <= 5000',
+      'prerequisites[i].length == 2',
+      'Optimal Time: O(V + E), Space: O(V + E)'
     ],
     language: 'typescript',
-    starterCode: `function debounce<T extends (...args: any[]) => any>(
-  func: T,
-  wait: number
-): ((...args: Parameters<T>) => void) & { cancel?: () => void } {
-  // Write your debounce implementation here
-  function debounced(this: any, ...args: Parameters<T>) {
-    
-  }
-
-  debounced.cancel = () => {};
-
-  return debounced;
+    starterCode: `function canFinish(numCourses: number, prerequisites: number[][]): boolean {
+  // Write your topological sort or cycle detection here
+  return true;
 }`,
     sampleTestCases: [
       {
-        input: 'debounce(fn, 150); invoked rapidly',
-        expectedOutput: 'Executes once after 150ms of silence',
-        explanation: 'Timer reset logic verified'
+        input: 'numCourses = 2, prerequisites = [[1, 0]]',
+        expectedOutput: 'true',
+        explanation: 'Valid DAG with no cycles'
+      },
+      {
+        input: 'numCourses = 2, prerequisites = [[1, 0], [0, 1]]',
+        expectedOutput: 'false',
+        explanation: 'Cycle detected: 0 depends on 1, 1 depends on 0'
+      }
+    ]
+  },
+  {
+    id: 'dsa-lru-cache',
+    title: 'LRU Cache (Least Recently Used)',
+    difficulty: 'Medium',
+    topicTags: ['Hash Table', 'Linked List', 'Doubly-Linked List', 'Design'],
+    skillCategory: 'Advanced Data Structures',
+    description: `Design a data structure that follows the constraints of a **Least Recently Used (LRU) Cache**.
+
+Implement the \`LRUCache\` class:
+- \`LRUCache(int capacity)\`: Initialize the LRU cache with positive size \`capacity\`.
+- \`int get(int key)\`: Return the value of the \`key\` if the key exists, otherwise return \`-1\`.
+- \`void put(int key, int value)\`: Update or insert key-value pair. If capacity is exceeded, **evict the least recently used key**.
+
+Both \`get\` and \`put\` must run in **O(1)** average time complexity.`,
+    examples: [
+      {
+        input: 'capacity = 2, put(1, 1), put(2, 2), get(1)',
+        output: '1',
+        explanation: 'Key 1 exists and returns 1.'
+      }
+    ],
+    constraints: [
+      '1 <= capacity <= 3000',
+      '0 <= key <= 10^4',
+      '0 <= value <= 10^5',
+      'O(1) time complexity for both get and put operations.'
+    ],
+    language: 'typescript',
+    starterCode: `class LRUCache {
+  constructor(capacity: number) {
+    // Initialize your LRU Cache here
+  }
+
+  get(key: number): number {
+    return -1;
+  }
+
+  put(key: number, value: number): void {
+    
+  }
+}`,
+    sampleTestCases: [
+      {
+        input: 'capacity = 2, put(1, 1), put(2, 2), get(1)',
+        expectedOutput: '1',
+        explanation: 'Key 1 exists and returns 1.'
+      },
+      {
+        input: 'capacity = 2, put(1, 1), put(2, 2), get(1), put(3, 3), get(2)',
+        expectedOutput: 'Evicts key 2 (least recently used)',
+        explanation: 'get(2) returns -1 after eviction'
       }
     ]
   }
@@ -277,52 +412,53 @@ A debounced function delays invoking the target \`func\` until after \`wait\` mi
 export const DEFAULT_CODING_CHALLENGES = ROLE_DSA_CHALLENGES.slice(0, 2);
 
 /**
- * Returns role-appropriate most-asked DSA challenges based on role keywords.
+ * Returns calibrated DSA challenges matching the requested difficulty:
+ * - Beginner: Arrays & Strings (Two Sum, Valid Palindrome, Stock)
+ * - Intermediate: Arrays, Strings & Sliding Window (Two Sum, Longest Substring)
+ * - Advanced: Graphs, Trees & Topological Sort (Number of Islands, Course Schedule)
  */
 export function getRoleBasedCodingChallenges(
   jobDescription: string = '',
-  resumeText: string = ''
+  resumeText: string = '',
+  difficulty: DifficultyLevel = 'intermediate'
 ): CodingChallenge[] {
-  const combined = (jobDescription + ' ' + resumeText).toLowerCase();
-
-  if (combined.includes('react') || combined.includes('frontend') || combined.includes('ui') || combined.includes('web')) {
-    // Frontend / Web: Two Sum & Sliding Window
+  if (difficulty === 'beginner') {
+    // Beginner: Arrays & Strings
     return [
-      ROLE_DSA_CHALLENGES.find(c => c.id === 'dsa-two-sum')!,
-      ROLE_DSA_CHALLENGES.find(c => c.id === 'dsa-sliding-window')!
+      ROLE_DSA_CHALLENGES.find((c) => c.id === 'dsa-two-sum')!,
+      ROLE_DSA_CHALLENGES.find((c) => c.id === 'dsa-valid-palindrome')!,
     ];
   }
 
-  if (combined.includes('backend') || combined.includes('distributed') || combined.includes('microservice') || combined.includes('system')) {
-    // Backend: LRU Cache & Token Bucket
+  if (difficulty === 'advanced') {
+    // Advanced: Graphs & Advanced Structures
     return [
-      ROLE_DSA_CHALLENGES.find(c => c.id === 'dsa-lru-cache')!,
-      ROLE_DSA_CHALLENGES.find(c => c.id === 'dsa-token-bucket')!
+      ROLE_DSA_CHALLENGES.find((c) => c.id === 'dsa-number-of-islands')!,
+      ROLE_DSA_CHALLENGES.find((c) => c.id === 'dsa-course-schedule')!,
     ];
   }
 
-  // Default General Full-Stack / Software Engineer
+  // Intermediate: Strings, Arrays, Sliding Window
   return [
-    ROLE_DSA_CHALLENGES.find(c => c.id === 'dsa-two-sum')!,
-    ROLE_DSA_CHALLENGES.find(c => c.id === 'dsa-lru-cache')!
+    ROLE_DSA_CHALLENGES.find((c) => c.id === 'dsa-two-sum')!,
+    ROLE_DSA_CHALLENGES.find((c) => c.id === 'dsa-longest-substring')!,
   ];
 }
 
 export function evaluateCodingFallback(code: string, challenge: CodingChallenge): CodingEvaluation {
   const trimmed = code.trim();
 
-  // Basic checks
-  if (trimmed.length < 30 || trimmed === challenge.starterCode.trim()) {
+  if (trimmed.length < 25 || trimmed === challenge.starterCode.trim()) {
     return {
-      score: 15,
+      score: 20,
       passed: false,
-      correctnessScore: 10,
+      correctnessScore: 15,
       timeComplexity: 'O(1)',
       spaceComplexity: 'O(1)',
-      codeQuality: 20,
+      codeQuality: 25,
       feedback: 'The submission does not implement the core logic or left the starter boilerplate untouched.',
       edgeCasesCovered: [],
-      edgeCasesMissed: ['Core execution flow', 'Parameter handling', 'Boundary conditions']
+      edgeCasesMissed: ['Core execution flow', 'Parameter handling', 'Boundary conditions'],
     };
   }
 
@@ -331,14 +467,8 @@ export function evaluateCodingFallback(code: string, challenge: CodingChallenge)
   let timeComplexity = 'O(n)';
   let spaceComplexity = 'O(n)';
 
-  // Heuristic checks
-  if (code.includes('Map') || code.includes('Set') || code.includes('hash')) {
+  if (code.includes('Map') || code.includes('Set') || code.includes('dfs') || code.includes('bfs')) {
     score += 10;
-    timeComplexity = 'O(1)';
-  }
-
-  if (code.includes('for') || code.includes('while')) {
-    correctness = 90;
   }
 
   return {
@@ -348,9 +478,8 @@ export function evaluateCodingFallback(code: string, challenge: CodingChallenge)
     timeComplexity,
     spaceComplexity,
     codeQuality: 85,
-    feedback: `Solid implementation of ${challenge.title}. Logic satisfies primary problem constraints with appropriate time complexity.`,
-    edgeCasesCovered: ['Standard input bounds', 'Positive/negative values', 'Type consistency'],
-    edgeCasesMissed: ['Very large scale arrays (10^7 items)', 'Thread synchronization if distributed'],
-    suggestedOptimization: 'Consider evaluating benchmark memory allocations under sustained high concurrency.'
+    feedback: `Good attempt on ${challenge.title}. Core algorithmic structure demonstrates understanding of the problem.`,
+    edgeCasesCovered: ['Standard input bounds', 'Valid returns'],
+    edgeCasesMissed: ['Extreme boundary constraints'],
   };
 }

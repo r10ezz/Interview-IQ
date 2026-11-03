@@ -174,7 +174,7 @@ export async function generateInterviewQuestions(
         },
       });
 
-      const prompt = `You are a Principal Technical Interviewer and Hiring Committee Lead conducting a realistic, high-signal mock interview (like Pramp or Aced).
+      const prompt = `You are a friendly, experienced Technical Interviewer conducting a realistic, supportive technical interview.
 You are evaluating candidate "${analysis.candidateName}" for the target role detailed in the Job Description.
 
 CANDIDATE RESUME:
@@ -191,36 +191,31 @@ CANDIDATE ANALYSIS:
 SELECTED ROUNDS:
 ${selectedRounds.join(', ')}
 
-INSTRUCTIONS (GENERATE EXACTLY ${count} QUESTIONS):
-${isFoundation && isBehavioral ? `
-- SPLIT QUESTIONS BETWEEN FOUNDATION & BEHAVIORAL:
-  1. FOUNDATION ROUND (First half): Focus on core language runtime, memory models, framework mechanics, and the MOST-ASKED foundational technical questions for this exact role (e.g. Event Loop, closures, reconciliation, connection pooling, indexing).
-  2. BEHAVIORAL ROUND (Second half): Focus on the STAR method (Situation, Task, Action, Result). Formulate questions that directly reference the candidate's actual projects from their resume (e.g. "${analysis.projects[0]?.name || 'past projects'}"), probing technical disagreements, production crises, trade-offs under pressure, and cross-functional ownership.
-` : isFoundation ? `
-- ALL QUESTIONS MUST BE TECHNICAL & FOUNDATIONAL:
-  * Start with most-asked language/runtime fundamentals for this role (e.g. memory model, async execution, closures, reconciliation).
-  * Advance to practical component/service architecture and production trade-offs.
-` : `
-- ALL QUESTIONS MUST BE BEHAVIORAL & PROJECT-FOCUSED (STAR Method):
-  * Directly tie questions to the projects, architecture, and responsibilities detailed in the candidate's resume and the leadership/ownership expectations in the Job Description.
-`}
+CRITICAL QUESTION GUIDELINES (DO NOT OVERWHELM THE CANDIDATE):
+1. QUESTIONS MUST BE SHORT, CLEAR, AND DIRECT (1 to 2 sentences maximum).
+2. DO NOT ask long multi-part paragraphs, deep distributed systems triages, or high-level architecture degradation quizzes.
+3. STICK CLOSELY TO WHAT IS ACTUALLY ON THE CANDIDATE'S RESUME AND THE JOB DESCRIPTION:
+   * Foundation Round: Ask fundamental, most-asked technical questions on the specific core technologies mentioned in their resume and JD:
+     - If React: difference between state and props, useEffect purpose, or key prop in lists.
+     - If JavaScript: synchronous vs asynchronous code, Promises, closures, or let vs const.
+     - If Node.js / Backend: GET vs POST, RESTful principles, or Express middleware.
+     - If Databases / SQL: indexing purpose, difference between SQL and NoSQL, or primary key vs foreign key.
+   * Project Focus: Reference their actual project by name from their resume (e.g. "${analysis.projects[0]?.name || 'your project'}"), asking a concise question about what the project does or their core technical responsibility.
+   * Behavioral Round: Ask 1 concise STAR scenario (e.g., a challenging bug they encountered and how they diagnosed it, or learning a new tool under a deadline).
+4. Address the candidate naturally by name ("${analysis.candidateName}").
 
-CRITICAL REALISM:
-- Address the candidate naturally by name ("${analysis.candidateName}").
-- Frame each question conversationally, as an interviewer addressing the candidate directly.
-
-Format strictly as a JSON array of questions with this schema:
+Generate EXACTLY ${count} questions. Format strictly as a JSON array matching this schema:
 [
   {
     "id": "q1",
     "roundType": "foundation" | "behavioral",
-    "skillStage": "e.g. Stage 1: Core Fundamentals & Syntax" or "Behavioral: STAR Method & Project Leadership",
-    "text": "The exact interview question addressing the candidate directly",
+    "skillStage": "e.g. Stage 1: Core Fundamentals" or "Behavioral: Technical Challenge",
+    "text": "Short, direct 1-2 sentence question",
     "type": "fundamental" | "job-requirement" | "resume-project" | "behavioral",
-    "category": "e.g. JavaScript Runtime / Event Loop or Project Architecture",
-    "targetSkillOrProject": "e.g. React & Node.js or ${analysis.projects[0]?.name || 'Primary Project'}",
+    "category": "e.g. React Basics or JavaScript Fundamentals",
+    "targetSkillOrProject": "e.g. React or ${analysis.projects[0]?.name || 'Project'}",
     "difficulty": "${difficulty}",
-    "suggestedDurationSeconds": 120
+    "suggestedDurationSeconds": 90
   }
 ]
 `;
@@ -264,7 +259,7 @@ export async function generateDynamicCodingChallenges(
 
   if (!client) {
     return {
-      challenges: getRoleBasedCodingChallenges(jobDescription, resumeText),
+      challenges: getRoleBasedCodingChallenges(jobDescription, resumeText, difficulty),
       source: 'fallback',
     };
   }
@@ -280,7 +275,7 @@ export async function generateDynamicCodingChallenges(
       });
 
       const prompt = `You are a Principal Software Engineer and LeetCode / HackerRank problem setter.
-Generate EXACTLY 2 role-specific, most-asked Data Structures & Algorithms (DSA) or System Algorithm coding problems for this candidate and target role.
+Generate EXACTLY 2 role-specific, most-asked Data Structures & Algorithms (DSA) coding problems for this candidate and target role.
 
 CANDIDATE:
 - Candidate Name: ${analysis.candidateName}
@@ -290,21 +285,28 @@ ${resumeText.slice(0, 1500)}
 JOB DESCRIPTION:
 ${jobDescription.slice(0, 1500)}
 
-CRITERIA:
-- The 2 problems MUST be the MOST-ASKED coding interview problems for this specific role:
-  * If Frontend/FullStack: problems like LRU Cache, Two Sum, Longest Substring Without Repeating Characters, Custom Debounce/Throttle, Flatten Deep Object, Valid Parentheses.
-  * If Backend/Systems: problems like Token Bucket Rate Limiter, LRU Cache, Merge Intervals, Course Schedule (Graph/Topo-sort), Top-K Frequent Elements.
-- Format each problem in professional LeetCode / HackerRank style with Example 1, Example 2, and realistic Constraints.
-- Include starter code in TypeScript with complete type annotations.
-- Include 2-3 sample test cases with input, expectedOutput, and explanation.
+STRICT DIFFICULTY CALIBRATION FOR "${difficulty.toUpperCase()}":
+${difficulty === 'beginner' ? `
+* BEGINNER LEVEL: Generate problems focusing strictly on basic ARRAYS and STRINGS (e.g., Two Sum, Valid Palindrome, Best Time to Buy and Sell Stock, Valid Anagram, Reverse String, Contains Duplicate).
+* Do NOT ask graph, tree traversal, or dynamic programming questions for beginners.
+` : difficulty === 'advanced' ? `
+* ADVANCED LEVEL: Generate problems focusing on GRAPHS, TREES, or ADVANCED DATA STRUCTURES (e.g., Number of Islands / Graph DFS, Course Schedule / Topological Sort, Binary Tree Level Order, LRU Cache).
+` : `
+* INTERMEDIATE LEVEL: Generate problems focusing on STRINGS, ARRAYS, SLIDING WINDOW, and TWO POINTERS (e.g., Longest Substring Without Repeating Characters, Two Sum, Valid Parentheses, Best Time to Buy and Sell Stock).
+`}
+
+CRITICAL REQUIREMENTS:
+1. starterCode MUST BE AN UNIMPLEMENTED FUNCTION STUB with a helpful comment (like LeetCode), NOT the completed solution.
+2. Format each problem in professional LeetCode style with Example 1, Example 2, and realistic Constraints.
+3. Include 2-3 sample test cases with clean input and expectedOutput.
 
 Return strictly a JSON array matching this schema:
 [
   {
     "id": "dsa-1",
-    "title": "Problem Title (e.g. LRU Cache)",
-    "difficulty": "Easy" | "Medium" | "Hard",
-    "topicTags": ["Hash Table", "Two Pointers"],
+    "title": "Problem Title",
+    "difficulty": "${difficulty === 'beginner' ? 'Easy' : difficulty === 'advanced' ? 'Hard' : 'Medium'}",
+    "topicTags": ["Array", "Two Pointers"],
     "skillCategory": "Data Structures & Algorithms",
     "description": "Clear problem statement with requirements",
     "examples": [
@@ -318,13 +320,13 @@ Return strictly a JSON array matching this schema:
       "1 <= nums.length <= 10^5",
       "Time Complexity: O(n), Space: O(n)"
     ],
-    "starterCode": "function solve(...) { ... }",
+    "starterCode": "function solve(nums: number[], target: number): number[] {\\n  // Write your solution here\\n\\n}",
     "language": "typescript",
     "sampleTestCases": [
       {
-        "input": "...",
-        "expectedOutput": "...",
-        "explanation": "..."
+        "input": "nums = [2, 7, 11, 15], target = 9",
+        "expectedOutput": "[0, 1]",
+        "explanation": "2 + 7 = 9"
       }
     ]
   }
@@ -346,7 +348,7 @@ Return strictly a JSON array matching this schema:
   }
 
   return {
-    challenges: getRoleBasedCodingChallenges(jobDescription, resumeText),
+    challenges: getRoleBasedCodingChallenges(jobDescription, resumeText, difficulty),
     source: 'fallback',
   };
 }
