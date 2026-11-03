@@ -340,7 +340,7 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50 text-slate-900">
+    <div className={`flex flex-col ${currentStep === 'coding' ? 'h-screen overflow-hidden' : 'min-h-screen'} bg-slate-50 text-slate-900`}>
       {/* Global Navigation Header */}
       <Navbar
         currentStep={currentStep}
@@ -350,7 +350,7 @@ export default function Home() {
       />
 
       {/* Main Content Area based on Stage */}
-      <main className="flex-1">
+      <main className={`flex-1 ${currentStep === 'coding' ? 'h-[calc(100vh-4rem)] overflow-hidden p-2 sm:p-3 flex flex-col' : ''}`}>
         {currentStep === 'landing' && (
           <>
             <LandingHero
@@ -420,7 +420,7 @@ export default function Home() {
       </main>
 
       {/* Global Footer */}
-      <Footer />
+      {currentStep !== 'coding' && <Footer />}
 
       {/* API Key Modal */}
       <ApiKeyModal
