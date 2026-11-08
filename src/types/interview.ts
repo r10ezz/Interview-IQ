@@ -55,6 +55,8 @@ export interface InterviewExchange {
   timeSpentSeconds?: number;
 }
 
+export type SupportedLanguage = 'typescript' | 'javascript' | 'python' | 'java' | 'cpp' | 'c';
+
 export interface CodingTestCase {
   input: string;
   expectedOutput: string;
@@ -77,7 +79,8 @@ export interface CodingChallenge {
   examples?: CodingChallengeExample[];
   constraints?: string[];
   starterCode: string;
-  language: string; // 'typescript' | 'javascript' | 'python'
+  starterCodes?: Partial<Record<SupportedLanguage, string>>;
+  language: SupportedLanguage | string;
   sampleTestCases: CodingTestCase[];
 }
 
@@ -97,7 +100,7 @@ export interface CodingEvaluation {
 export interface CodingSubmission {
   challenge: CodingChallenge;
   code: string;
-  language?: string;
+  language?: SupportedLanguage | string;
   evaluation: CodingEvaluation;
   submittedAt: string;
 }

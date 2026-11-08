@@ -5,7 +5,7 @@ import { evaluateCodingFallback } from '@/lib/coding-challenges';
 
 export async function POST(req: NextRequest) {
   try {
-    const { code, challenge, customApiKey } = await req.json();
+    const { code, challenge, language = 'typescript', customApiKey } = await req.json();
 
     if (!code || !challenge) {
       return NextResponse.json({ error: 'Missing code or challenge payload.' }, { status: 400 });
@@ -14,14 +14,14 @@ export async function POST(req: NextRequest) {
     const key = customApiKey || process.env.GEMINI_API_KEY;
 
     if (!key) {
-      const evaluation = evaluateCodingFallback(code, challenge as CodingChallenge);
+      const evaluation = evaluateCodingFallback(code, challenge as CodingChallenge, language);
       return NextResponse.json({ success: true, evaluation, source: 'fallback' });
     }
 
     try {
       const client = new GoogleGenerativeAI(key.trim());
       const model = client.getGenerativeModel({
-        model: 'gemini-3.5-flash-lite',
+        model: 'gemini-2.5-flash',
         generationConfig: {
           responseMimeType: 'application/json',
           temperature: 0.1,
@@ -33,30 +33,31 @@ export async function POST(req: NextRequest) {
 CODING CHALLENGE:
 Title: ${challenge.title}
 Difficulty: ${challenge.difficulty}
+Programming Language: ${language}
 Description:
 ${challenge.description}
 
-CANDIDATE'S SUBMITTED CODE:
-\`\`\`${challenge.language || 'typescript'}
+CANDIDATE'S SUBMITTED CODE (${language}):
+\`\`\`${language}
 ${code}
 \`\`\`
 
 Evaluate this code strictly for:
-1. Correctness (does it solve the problem requirements and sample test cases?)
-2. Time and Space Complexity (Big-O analysis)
-3. Code quality, edge-case mitigation, and defensive programming.
+1. Correctness (does it solve the problem requirements and constraints according to ${language} conventions?)
+2. Time and Space Complexity (accurate Big-O analysis, e.g. O(n) time, O(1) space)
+3. Code quality, language idioms, memory safety, and edge-case handling.
 
 Return strictly a JSON object matching this schema:
 {
   "score": 85, // 0-100 overall code score
   "passed": true, // boolean (true if score >= 70)
   "correctnessScore": 90, // 0-100
-  "timeComplexity": "O(1)",
+  "timeComplexity": "O(n)",
   "spaceComplexity": "O(1)",
   "codeQuality": 85,
   "feedback": "2-3 sentences evaluating logic, cleanliness, and correctness",
-  "edgeCasesCovered": ["Handled timer resets", "Forwarded arguments"],
-  "edgeCasesMissed": ["Did not handle negative delay"],
+  "edgeCasesCovered": ["Handled empty input", "Handled duplicate elements"],
+  "edgeCasesMissed": ["Did not handle negative constraints"],
   "suggestedOptimization": "Brief optimization advice if applicable"
 }
 `;
@@ -71,7 +72,7 @@ Return strictly a JSON object matching this schema:
       return NextResponse.json({ success: true, evaluation, source: 'gemini' });
     } catch (err) {
       console.warn('Gemini coding evaluation fallback:', err);
-      const evaluation = evaluateCodingFallback(code, challenge as CodingChallenge);
+      const evaluation = evaluateCodingFallback(code, challenge as CodingChallenge, language);
       return NextResponse.json({ success: true, evaluation, source: 'fallback' });
     }
   } catch (error) {
@@ -81,4 +82,3 @@ Return strictly a JSON object matching this schema:
     );
   }
 }
-

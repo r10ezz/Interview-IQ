@@ -5,28 +5,71 @@ import {
   Code2,
   Play,
   RotateCcw,
-  CheckCircle2,
-  AlertTriangle,
   ChevronRight,
   Clock,
   Sparkles,
   Terminal,
   FileCode2,
   Check,
-  X,
-  Laptop2,
   ChevronLeft,
-  BookOpen,
   CheckCircle,
-  AlertCircle,
+  AlertTriangle,
+  Cpu,
 } from 'lucide-react';
-import { CodingChallenge, CodingEvaluation, CodingSubmission } from '@/types/interview';
+import {
+  CodingChallenge,
+  CodingEvaluation,
+  CodingSubmission,
+  SupportedLanguage,
+} from '@/types/interview';
 
 interface CodingRoundProps {
   challenges: CodingChallenge[];
   onCompleteCodingRound: (submissions: CodingSubmission[]) => void;
   candidateName?: string;
 }
+
+const LANGUAGE_CONFIGS: Record<
+  SupportedLanguage,
+  { label: string; compiler: string; version: string; badgeColor: string }
+> = {
+  typescript: {
+    label: 'TypeScript',
+    compiler: 'Node.js + TS 5.0',
+    version: 'TS 5.0',
+    badgeColor: 'bg-blue-50 text-blue-700 border-blue-200',
+  },
+  javascript: {
+    label: 'JavaScript',
+    compiler: 'Node.js v22',
+    version: 'ES2022',
+    badgeColor: 'bg-amber-50 text-amber-700 border-amber-200',
+  },
+  python: {
+    label: 'Python',
+    compiler: 'Python 3.12',
+    version: 'Python 3',
+    badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  },
+  java: {
+    label: 'Java',
+    compiler: 'OpenJDK 21 (LTS)',
+    version: 'Java 21',
+    badgeColor: 'bg-orange-50 text-orange-700 border-orange-200',
+  },
+  cpp: {
+    label: 'C++',
+    compiler: 'GCC 15.2 (C++17)',
+    version: 'C++17',
+    badgeColor: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  },
+  c: {
+    label: 'C',
+    compiler: 'GCC 15.2 (C17)',
+    version: 'C17',
+    badgeColor: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+  },
+};
 
 export default function CodingRound({
   challenges,
@@ -36,17 +79,21 @@ export default function CodingRound({
   const [currentIndex, setCurrentIndex] = useState(0);
   const currentChallenge = challenges[currentIndex] || challenges[0];
 
+  const [language, setLanguage] = useState<SupportedLanguage>('typescript');
+  // Store user's edits per language so switching doesn't lose code
+  const [codeMap, setCodeMap] = useState<Partial<Record<SupportedLanguage, string>>>({});
   const [code, setCode] = useState(currentChallenge?.starterCode || '');
-  const [language, setLanguage] = useState<'typescript' | 'javascript' | 'python'>('typescript');
+
   const [activeTab, setActiveTab] = useState<'problem' | 'testcases' | 'console'>('problem');
   const [selectedTestCaseIdx, setSelectedTestCaseIdx] = useState(0);
 
   // Real execution state
   const [isRunningCode, setIsRunningCode] = useState(false);
   const [runResult, setRunResult] = useState<{
-    status: 'Accepted' | 'Wrong Answer' | 'Runtime Error' | 'Compilation Error';
+    status: 'Accepted' | 'Wrong Answer' | 'Runtime Error' | 'Compilation Error' | 'Time Limit Exceeded';
     runtimeMs: number;
     allPassed: boolean;
+    compilationError?: string;
     testResults: {
       caseNumber: number;
       passed: boolean;
@@ -75,16 +122,52 @@ export default function CodingRound({
     return () => clearInterval(timer);
   }, []);
 
-  // Update starter code when challenge changes
+  // Update code when challenge changes
   useEffect(() => {
     if (currentChallenge) {
-      setCode(currentChallenge.starterCode);
+      const initialStarter =
+        currentChallenge.starterCodes?.[language] || currentChallenge.starterCode;
+      setCode(initialStarter);
+      setCodeMap({
+        [language]: initialStarter,
+      });
       setLastEvaluation(null);
       setRunResult(null);
       setActiveTab('problem');
       setSelectedTestCaseIdx(0);
     }
   }, [currentIndex, currentChallenge]);
+
+  // Handle switching language in dropdown
+  const handleLanguageChange = (newLang: SupportedLanguage) => {
+    // 1. Cache current code under the old language
+    const updatedMap = {
+      ...codeMap,
+      [language]: code,
+    };
+    setCodeMap(updatedMap);
+
+    // 2. Load cached code or fresh starter code for the new language
+    const nextCode =
+      updatedMap[newLang] ||
+      currentChallenge?.starterCodes?.[newLang] ||
+      currentChallenge?.starterCode ||
+      '';
+
+    setLanguage(newLang);
+    setCode(nextCode);
+    setRunResult(null);
+  };
+
+  const handleResetCode = () => {
+    const defaultStub =
+      currentChallenge?.starterCodes?.[language] || currentChallenge?.starterCode || '';
+    setCode(defaultStub);
+    setCodeMap((prev) => ({
+      ...prev,
+      [language]: defaultStub,
+    }));
+  };
 
   const formatTimer = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -117,7 +200,10 @@ export default function CodingRound({
       const currentLine = code.substring(0, start).split('\n').pop() || '';
       const indentMatch = currentLine.match(/^\s+/);
       const indent = indentMatch ? indentMatch[0] : '';
-      const extraIndent = currentLine.trim().endsWith('{') || currentLine.trim().endsWith('(') ? '  ' : '';
+      const extraIndent =
+        currentLine.trim().endsWith('{') || currentLine.trim().endsWith('(') || currentLine.trim().endsWith(':')
+          ? '  '
+          : '';
 
       e.preventDefault();
       const insert = '\n' + indent + extraIndent;
@@ -127,10 +213,6 @@ export default function CodingRound({
         target.selectionStart = target.selectionEnd = start + insert.length;
       }, 0);
     }
-  };
-
-  const handleResetCode = () => {
-    setCode(currentChallenge.starterCode);
   };
 
   // REAL Run Code against test cases
@@ -157,10 +239,10 @@ export default function CodingRound({
         status: data.status,
         runtimeMs: data.runtimeMs,
         allPassed: data.allPassed,
+        compilationError: data.compilationError,
         testResults: data.testResults,
       });
     } catch (err: any) {
-      console.warn('Execution error:', err);
       setRunResult({
         status: 'Runtime Error',
         runtimeMs: 0,
@@ -179,14 +261,14 @@ export default function CodingRound({
     }
   };
 
-  // Submit code for full server-side evaluation & complexity analysis
+  // Submit Code & Evaluate Big-O and correctness
   const handleSubmitCode = async () => {
-    if (isSubmitting || !code.trim()) return;
-
     setIsSubmitting(true);
+    setActiveTab('console');
+
     try {
-      // First, run tests to get accurate test pass rate
-      let runData: any = null;
+      // 1. Run live compiler tests first
+      let runData = runResult;
       try {
         const runRes = await fetch('/api/coding/run', {
           method: 'POST',
@@ -203,12 +285,14 @@ export default function CodingRound({
         console.warn('Run check failed before submit:', rErr);
       }
 
+      // 2. Submit to Evaluator API
       const res = await fetch('/api/coding/evaluate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           code,
           challenge: currentChallenge,
+          language,
           runResults: runData,
         }),
       });
@@ -217,13 +301,13 @@ export default function CodingRound({
       if (!res.ok) throw new Error(data.error || 'Evaluation failed');
 
       const evaluation: CodingEvaluation = data.evaluation;
-      
-      // If tests failed in real execution, adjust score honestly
+
+      // Real test cases penalty if tests failed
       if (runData && !runData.allPassed) {
         evaluation.passed = false;
         evaluation.score = Math.min(evaluation.score, 45);
         evaluation.correctnessScore = Math.min(evaluation.correctnessScore, 40);
-        evaluation.feedback = `Test cases failed. ${evaluation.feedback}`;
+        evaluation.feedback = `Test cases failed (${runData.status}). ${evaluation.feedback}`;
       }
 
       setLastEvaluation(evaluation);
@@ -238,14 +322,14 @@ export default function CodingRound({
 
       setSubmissions((prev) => [...prev, submission]);
     } catch (err: any) {
-      console.warn('AI evaluation error, generating local assessment:', err);
+      console.warn('AI evaluation fallback:', err);
       const passed = runResult ? runResult.allPassed : code.length > 50;
       const fallbackEval: CodingEvaluation = {
         score: passed ? 85 : 35,
         passed,
-        feedback: passed 
-          ? 'Solution passed all test cases with clean algorithmic logic.' 
-          : 'Solution failed test cases. Check edge cases and return types.',
+        feedback: passed
+          ? `Solution in ${LANGUAGE_CONFIGS[language].label} passed all test cases with clean algorithmic logic.`
+          : `Solution failed test cases. Check constraints and boundary conditions.`,
         timeComplexity: 'O(n)',
         spaceComplexity: 'O(1)',
         edgeCasesCovered: passed ? ['Standard input ranges', 'Valid outputs'] : [],
@@ -327,7 +411,11 @@ export default function CodingRound({
             <span className="text-xs sm:text-sm font-bold text-slate-900 truncate max-w-[200px] sm:max-w-[320px]">
               {currentChallenge.title}
             </span>
-            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getDifficultyBadge(currentChallenge.difficulty)}`}>
+            <span
+              className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getDifficultyBadge(
+                currentChallenge.difficulty
+              )}`}
+            >
               {currentChallenge.difficulty}
             </span>
           </div>
@@ -389,7 +477,11 @@ export default function CodingRound({
               <Terminal className="w-3.5 h-3.5 text-slate-500" />
               <span>Test Result</span>
               {runResult && (
-                <span className={`w-2 h-2 rounded-full ${runResult.allPassed ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    runResult.allPassed ? 'bg-emerald-500' : 'bg-rose-500'
+                  }`}
+                />
               )}
             </button>
           </div>
@@ -425,7 +517,10 @@ export default function CodingRound({
               {currentChallenge.examples && currentChallenge.examples.length > 0 && (
                 <div className="space-y-3 pt-2">
                   {currentChallenge.examples.map((ex, idx) => (
-                    <div key={idx} className="p-3 rounded-lg bg-slate-50 border border-slate-200 font-mono text-[11px] space-y-1">
+                    <div
+                      key={idx}
+                      className="p-3 rounded-lg bg-slate-50 border border-slate-200 font-mono text-[11px] space-y-1"
+                    >
                       <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 font-sans">
                         Example {idx + 1}:
                       </div>
@@ -515,7 +610,9 @@ export default function CodingRound({
               {isRunningCode ? (
                 <div className="flex items-center space-x-3 text-slate-600 py-10 justify-center">
                   <div className="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                  <span className="font-sans text-xs font-medium">Running code against sandbox test cases...</span>
+                  <span className="font-sans text-xs font-medium">
+                    Compiling and running {LANGUAGE_CONFIGS[language].label} test cases...
+                  </span>
                 </div>
               ) : runResult ? (
                 <div className="space-y-4">
@@ -526,6 +623,8 @@ export default function CodingRound({
                         className={`px-2.5 py-1 rounded-md text-xs font-bold border ${
                           runResult.status === 'Accepted'
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : runResult.status === 'Compilation Error'
+                            ? 'bg-amber-50 text-amber-700 border-amber-200'
                             : 'bg-rose-50 text-rose-700 border-rose-200'
                         }`}
                       >
@@ -537,9 +636,23 @@ export default function CodingRound({
                     </div>
 
                     <span className="text-[11px] text-slate-500 font-semibold">
-                      {runResult.testResults.filter((r) => r.passed).length} / {runResult.testResults.length} Cases Passed
+                      {runResult.testResults.filter((r) => r.passed).length} /{' '}
+                      {runResult.testResults.length} Cases Passed
                     </span>
                   </div>
+
+                  {/* Compilation Error Display */}
+                  {runResult.compilationError && (
+                    <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 space-y-1.5 font-mono text-[11px]">
+                      <div className="flex items-center space-x-1.5 text-amber-800 font-sans font-bold">
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Compiler Diagnostics ({LANGUAGE_CONFIGS[language].compiler})</span>
+                      </div>
+                      <pre className="whitespace-pre-wrap overflow-x-auto p-2 bg-amber-100/60 rounded border border-amber-300/40 text-[11px] leading-relaxed">
+                        {runResult.compilationError}
+                      </pre>
+                    </div>
+                  )}
 
                   {/* Test case tabs */}
                   <div className="flex items-center space-x-1.5 font-sans">
@@ -580,11 +693,13 @@ export default function CodingRound({
                         <div className="text-[11px] font-sans font-semibold text-slate-500 mb-1">
                           Your Output
                         </div>
-                        <div className={`p-2.5 rounded-lg border font-mono ${
-                          runResult.testResults[selectedTestCaseIdx].passed
-                            ? 'bg-emerald-50/60 border-emerald-200 text-emerald-800'
-                            : 'bg-rose-50/60 border-rose-200 text-rose-800 font-semibold'
-                        }`}>
+                        <div
+                          className={`p-2.5 rounded-lg border font-mono ${
+                            runResult.testResults[selectedTestCaseIdx].passed
+                              ? 'bg-emerald-50/60 border-emerald-200 text-emerald-800'
+                              : 'bg-rose-50/60 border-rose-200 text-rose-800 font-semibold'
+                          }`}
+                        >
                           {runResult.testResults[selectedTestCaseIdx].actual}
                         </div>
                       </div>
@@ -602,9 +717,9 @@ export default function CodingRound({
                         runResult.testResults[selectedTestCaseIdx].logs.length > 0 && (
                           <div>
                             <div className="text-[11px] font-sans font-semibold text-slate-500 mb-1">
-                              Stdout / console.log
+                              Stdout / Debug Logs
                             </div>
-                            <div className="p-2.5 rounded-lg bg-slate-900 text-slate-200 text-xs">
+                            <div className="p-2.5 rounded-lg bg-slate-900 text-slate-200 text-xs whitespace-pre-wrap">
                               {runResult.testResults[selectedTestCaseIdx].logs.join('\n')}
                             </div>
                           </div>
@@ -615,7 +730,10 @@ export default function CodingRound({
               ) : (
                 <div className="text-slate-400 py-10 text-center font-sans space-y-2">
                   <Terminal className="w-8 h-8 text-slate-300 mx-auto" />
-                  <p className="text-xs">Click &ldquo;Run Code&rdquo; to execute your solution against test cases.</p>
+                  <p className="text-xs">
+                    Click &ldquo;Run Code&rdquo; to execute your {LANGUAGE_CONFIGS[language].label}{' '}
+                    solution against test cases.
+                  </p>
                 </div>
               )}
             </div>
@@ -630,13 +748,25 @@ export default function CodingRound({
               <Code2 className="w-4 h-4 text-indigo-600" />
               <select
                 value={language}
-                onChange={(e) => setLanguage(e.target.value as any)}
-                className="bg-white border border-slate-200 rounded-md px-2 py-1 text-xs text-slate-800 font-semibold focus:outline-none focus:border-indigo-600 shadow-xs"
+                onChange={(e) => handleLanguageChange(e.target.value as SupportedLanguage)}
+                className="bg-white border border-slate-200 rounded-md px-2.5 py-1 text-xs text-slate-800 font-bold focus:outline-none focus:border-indigo-600 shadow-xs cursor-pointer"
               >
                 <option value="typescript">TypeScript</option>
                 <option value="javascript">JavaScript</option>
                 <option value="python">Python</option>
+                <option value="java">Java</option>
+                <option value="cpp">C++</option>
+                <option value="c">C</option>
               </select>
+
+              {/* Active Compiler Engine Badge */}
+              <div
+                className={`hidden sm:inline-flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-semibold border ${LANGUAGE_CONFIGS[language].badgeColor}`}
+                title={`Execution environment: ${LANGUAGE_CONFIGS[language].compiler}`}
+              >
+                <Cpu className="w-3 h-3" />
+                <span>{LANGUAGE_CONFIGS[language].compiler}</span>
+              </div>
             </div>
 
             <div className="flex items-center space-x-3 text-xs">
@@ -644,7 +774,7 @@ export default function CodingRound({
                 type="button"
                 onClick={handleResetCode}
                 className="text-[11px] text-slate-500 hover:text-slate-800 flex items-center space-x-1 transition-colors"
-                title="Reset code to starter template"
+                title={`Reset ${LANGUAGE_CONFIGS[language].label} code to starter template`}
               >
                 <RotateCcw className="w-3 h-3" />
                 <span>Reset Stub</span>
@@ -675,7 +805,7 @@ export default function CodingRound({
               onKeyDown={handleKeyDown}
               spellCheck={false}
               className="flex-1 bg-transparent text-slate-100 p-3 font-mono text-[13px] sm:text-[14px] leading-6 resize-none focus:outline-none focus:ring-0 overflow-y-auto whitespace-pre tab-2"
-              placeholder="// Write your code here..."
+              placeholder={`// Write your ${LANGUAGE_CONFIGS[language].label} solution here...`}
             />
           </div>
 
@@ -763,19 +893,27 @@ export default function CodingRound({
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3 text-center">
             <div className="p-2 rounded-lg bg-slate-50 border border-slate-200">
               <div className="text-[10px] text-slate-500 uppercase font-semibold">Time Complexity</div>
-              <div className="text-xs font-mono font-bold text-indigo-700 mt-0.5">{lastEvaluation.timeComplexity}</div>
+              <div className="text-xs font-mono font-bold text-indigo-700 mt-0.5">
+                {lastEvaluation.timeComplexity}
+              </div>
             </div>
             <div className="p-2 rounded-lg bg-slate-50 border border-slate-200">
               <div className="text-[10px] text-slate-500 uppercase font-semibold">Space Complexity</div>
-              <div className="text-xs font-mono font-bold text-indigo-700 mt-0.5">{lastEvaluation.spaceComplexity}</div>
+              <div className="text-xs font-mono font-bold text-indigo-700 mt-0.5">
+                {lastEvaluation.spaceComplexity}
+              </div>
             </div>
             <div className="p-2 rounded-lg bg-slate-50 border border-slate-200">
               <div className="text-[10px] text-slate-500 uppercase font-semibold">Correctness</div>
-              <div className="text-xs font-bold text-slate-900 mt-0.5">{lastEvaluation.correctnessScore}%</div>
+              <div className="text-xs font-bold text-slate-900 mt-0.5">
+                {lastEvaluation.correctnessScore}%
+              </div>
             </div>
             <div className="p-2 rounded-lg bg-slate-50 border border-slate-200">
               <div className="text-[10px] text-slate-500 uppercase font-semibold">Code Quality</div>
-              <div className="text-xs font-bold text-slate-900 mt-0.5">{lastEvaluation.codeQuality}%</div>
+              <div className="text-xs font-bold text-slate-900 mt-0.5">
+                {lastEvaluation.codeQuality}%
+              </div>
             </div>
           </div>
 

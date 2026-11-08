@@ -1,4 +1,4 @@
-import { CodingChallenge, CodingEvaluation, DifficultyLevel } from '@/types/interview';
+import { CodingChallenge, CodingEvaluation, DifficultyLevel, SupportedLanguage } from '@/types/interview';
 
 export const ROLE_DSA_CHALLENGES: CodingChallenge[] = [
   // ==================== TIER 1: BEGINNER (ARRAYS & STRINGS) ====================
@@ -35,8 +35,61 @@ An optimal solution must run in **O(n)** time complexity using a single pass wit
     language: 'typescript',
     starterCode: `function twoSum(nums: number[], target: number): number[] {
   // Write your solution here
-  
+  return [];
 }`,
+    starterCodes: {
+      typescript: `function twoSum(nums: number[], target: number): number[] {
+  // Write your solution here
+  return [];
+}`,
+      javascript: `/**
+ * @param {number[]} nums
+ * @param {number} target
+ * @return {number[]}
+ */
+function twoSum(nums, target) {
+  // Write your solution here
+  return [];
+}`,
+      python: `class Solution:
+    def twoSum(self, nums: list[int], target: int) -> list[int]:
+        # Write your solution here
+        return []
+`,
+      java: `import java.util.*;
+
+class Solution {
+    public int[] twoSum(int[] nums, int target) {
+        // Write your solution here
+        return new int[]{};
+    }
+}
+`,
+      cpp: `#include <vector>
+#include <unordered_map>
+using namespace std;
+
+class Solution {
+public:
+    vector<int> twoSum(vector<int>& nums, int target) {
+        // Write your solution here
+        return {};
+    }
+};
+`,
+      c: `#include <stdio.h>
+#include <stdlib.h>
+
+/**
+ * Note: The returned array must be malloced, assume caller calls free().
+ */
+int* twoSum(int* nums, int numsSize, int target, int* returnSize) {
+    // Write your solution here
+    *returnSize = 0;
+    return NULL;
+}
+`
+    },
     sampleTestCases: [
       {
         input: 'nums = [2, 7, 11, 15], target = 9',
@@ -91,6 +144,53 @@ Given a string \`s\`, return \`true\` if it is a palindrome, or \`false\` otherw
   // Write your solution here
   return false;
 }`,
+    starterCodes: {
+      typescript: `function isPalindrome(s: string): boolean {
+  // Write your solution here
+  return false;
+}`,
+      javascript: `/**
+ * @param {string} s
+ * @return {boolean}
+ */
+function isPalindrome(s) {
+  // Write your solution here
+  return false;
+}`,
+      python: `class Solution:
+    def isPalindrome(self, s: str) -> bool:
+        # Write your solution here
+        return False
+`,
+      java: `class Solution {
+    public boolean isPalindrome(String s) {
+        // Write your solution here
+        return false;
+    }
+}
+`,
+      cpp: `#include <string>
+#include <cctype>
+using namespace std;
+
+class Solution {
+public:
+    bool isPalindrome(string s) {
+        // Write your solution here
+        return false;
+    }
+};
+`,
+      c: `#include <stdbool.h>
+#include <string.h>
+#include <ctype.h>
+
+bool isPalindrome(char* s) {
+    // Write your solution here
+    return false;
+}
+`
+    },
     sampleTestCases: [
       {
         input: 's = "A man, a plan, a canal: Panama"',
@@ -142,6 +242,51 @@ Return the maximum profit you can achieve from this transaction. If you cannot a
   // Write your solution here
   return 0;
 }`,
+    starterCodes: {
+      typescript: `function maxProfit(prices: number[]): number {
+  // Write your solution here
+  return 0;
+}`,
+      javascript: `/**
+ * @param {number[]} prices
+ * @return {number}
+ */
+function maxProfit(prices) {
+  // Write your solution here
+  return 0;
+}`,
+      python: `class Solution:
+    def maxProfit(self, prices: list[int]) -> int:
+        # Write your solution here
+        return 0
+`,
+      java: `class Solution {
+    public int maxProfit(int[] prices) {
+        // Write your solution here
+        return 0;
+    }
+}
+`,
+      cpp: `#include <vector>
+#include <algorithm>
+using namespace std;
+
+class Solution {
+public:
+    int maxProfit(vector<int>& prices) {
+        // Write your solution here
+        return 0;
+    }
+};
+`,
+      c: `#include <stdio.h>
+
+int maxProfit(int* prices, int pricesSize) {
+    // Write your solution here
+    return 0;
+}
+`
+    },
     sampleTestCases: [
       {
         input: 'prices = [7, 1, 5, 3, 6, 4]',
@@ -195,6 +340,54 @@ You must solve this in **O(n)** time using the **Sliding Window** technique with
   // Write your solution here
   return 0;
 }`,
+    starterCodes: {
+      typescript: `function lengthOfLongestSubstring(s: string): number {
+  // Write your solution here
+  return 0;
+}`,
+      javascript: `/**
+ * @param {string} s
+ * @return {number}
+ */
+function lengthOfLongestSubstring(s) {
+  // Write your solution here
+  return 0;
+}`,
+      python: `class Solution:
+    def lengthOfLongestSubstring(self, s: str) -> int:
+        # Write your solution here
+        return 0
+`,
+      java: `import java.util.*;
+
+class Solution {
+    public int lengthOfLongestSubstring(String s) {
+        // Write your solution here
+        return 0;
+    }
+}
+`,
+      cpp: `#include <string>
+#include <unordered_map>
+#include <algorithm>
+using namespace std;
+
+class Solution {
+public:
+    int lengthOfLongestSubstring(string s) {
+        // Write your solution here
+        return 0;
+    }
+};
+`,
+      c: `#include <string.h>
+
+int lengthOfLongestSubstring(char* s) {
+    // Write your solution here
+    return 0;
+}
+`
+    },
     sampleTestCases: [
       {
         input: 's = "abcabcbb"',
@@ -247,6 +440,54 @@ An input string is valid if:
   // Write your solution here
   return false;
 }`,
+    starterCodes: {
+      typescript: `function isValid(s: string): boolean {
+  // Write your solution here
+  return false;
+}`,
+      javascript: `/**
+ * @param {string} s
+ * @return {boolean}
+ */
+function isValid(s) {
+  // Write your solution here
+  return false;
+}`,
+      python: `class Solution:
+    def isValid(self, s: str) -> bool:
+        # Write your solution here
+        return False
+`,
+      java: `import java.util.*;
+
+class Solution {
+    public boolean isValid(String s) {
+        // Write your solution here
+        return false;
+    }
+}
+`,
+      cpp: `#include <string>
+#include <stack>
+using namespace std;
+
+class Solution {
+public:
+    bool isValid(string s) {
+        // Write your solution here
+        return false;
+    }
+};
+`,
+      c: `#include <stdbool.h>
+#include <string.h>
+
+bool isValid(char* s) {
+    // Write your solution here
+    return false;
+}
+`
+    },
     sampleTestCases: [
       {
         input: 's = "()[]{}"',
@@ -295,6 +536,48 @@ An **island** is surrounded by water and is formed by connecting adjacent lands 
   // Write your graph traversal solution here
   return 0;
 }`,
+    starterCodes: {
+      typescript: `function numIslands(grid: string[][]): number {
+  // Write your graph traversal solution here
+  return 0;
+}`,
+      javascript: `/**
+ * @param {character[][]} grid
+ * @return {number}
+ */
+function numIslands(grid) {
+  // Write your graph traversal solution here
+  return 0;
+}`,
+      python: `class Solution:
+    def numIslands(self, grid: list[list[str]]) -> int:
+        # Write your graph traversal solution here
+        return 0
+`,
+      java: `class Solution {
+    public int numIslands(char[][] grid) {
+        // Write your graph traversal solution here
+        return 0;
+    }
+}
+`,
+      cpp: `#include <vector>
+using namespace std;
+
+class Solution {
+public:
+    int numIslands(vector<vector<char>>& grid) {
+        // Write your graph traversal solution here
+        return 0;
+    }
+};
+`,
+      c: `int numIslands(char** grid, int gridSize, int* gridColSize) {
+    // Write your graph traversal solution here
+    return 0;
+}
+`
+    },
     sampleTestCases: [
       {
         input: 'grid = [["1","1","0"],["1","1","0"],["0","0","1"]]',
@@ -340,6 +623,53 @@ Return \`true\` if you can finish all courses. Otherwise, return \`false\` (if t
   // Write your topological sort or cycle detection here
   return true;
 }`,
+    starterCodes: {
+      typescript: `function canFinish(numCourses: number, prerequisites: number[][]): boolean {
+  // Write your topological sort or cycle detection here
+  return true;
+}`,
+      javascript: `/**
+ * @param {number} numCourses
+ * @param {number[][]} prerequisites
+ * @return {boolean}
+ */
+function canFinish(numCourses, prerequisites) {
+  // Write your topological sort or cycle detection here
+  return true;
+}`,
+      python: `class Solution:
+    def canFinish(self, numCourses: int, prerequisites: list[list[int]]) -> bool:
+        # Write your topological sort or cycle detection here
+        return True
+`,
+      java: `import java.util.*;
+
+class Solution {
+    public boolean canFinish(int numCourses, int[][] prerequisites) {
+        // Write your topological sort or cycle detection here
+        return true;
+    }
+}
+`,
+      cpp: `#include <vector>
+using namespace std;
+
+class Solution {
+public:
+    bool canFinish(int numCourses, vector<vector<int>>& prerequisites) {
+        // Write your topological sort or cycle detection here
+        return true;
+    }
+};
+`,
+      c: `#include <stdbool.h>
+
+bool canFinish(int numCourses, int** prerequisites, int prerequisitesSize, int* prerequisitesColSize) {
+    // Write your topological sort or cycle detection here
+    return true;
+}
+`
+    },
     sampleTestCases: [
       {
         input: 'numCourses = 2, prerequisites = [[1, 0]]',
@@ -394,6 +724,115 @@ Both \`get\` and \`put\` must run in **O(1)** average time complexity.`,
     
   }
 }`,
+    starterCodes: {
+      typescript: `class LRUCache {
+  constructor(capacity: number) {
+    // Initialize your LRU Cache here
+  }
+
+  get(key: number): number {
+    return -1;
+  }
+
+  put(key: number, value: number): void {
+    
+  }
+}`,
+      javascript: `/**
+ * @param {number} capacity
+ */
+var LRUCache = function(capacity) {
+  // Initialize your LRU Cache here
+};
+
+/** 
+ * @param {number} key
+ * @return {number}
+ */
+LRUCache.prototype.get = function(key) {
+  return -1;
+};
+
+/** 
+ * @param {number} key 
+ * @param {number} value
+ * @return {void}
+ */
+LRUCache.prototype.put = function(key, value) {
+  
+};
+`,
+      python: `class LRUCache:
+    def __init__(self, capacity: int):
+        # Initialize your LRU Cache here
+        pass
+
+    def get(self, key: int) -> int:
+        return -1
+
+    def put(self, key: int, value: int) -> None:
+        pass
+`,
+      java: `import java.util.*;
+
+class LRUCache {
+    public LRUCache(int capacity) {
+        // Initialize your LRU Cache here
+    }
+    
+    public int get(int key) {
+        return -1;
+    }
+    
+    public void put(int key, int value) {
+        
+    }
+}
+`,
+      cpp: `#include <unordered_map>
+#include <list>
+using namespace std;
+
+class LRUCache {
+public:
+    LRUCache(int capacity) {
+        // Initialize your LRU Cache here
+    }
+    
+    int get(int key) {
+        return -1;
+    }
+    
+    void put(int key, int value) {
+        
+    }
+};
+`,
+      c: `#include <stdlib.h>
+
+typedef struct {
+    int capacity;
+} LRUCache;
+
+LRUCache* lRUCacheCreate(int capacity) {
+    LRUCache* obj = (LRUCache*)malloc(sizeof(LRUCache));
+    obj->capacity = capacity;
+    return obj;
+}
+
+int lRUCacheGet(LRUCache* obj, int key) {
+    return -1;
+}
+
+void lRUCachePut(LRUCache* obj, int key, int value) {
+    
+}
+
+void lRUCacheFree(LRUCache* obj) {
+    if (obj) free(obj);
+}
+`
+    },
     sampleTestCases: [
       {
         input: 'capacity = 2, put(1, 1), put(2, 2), get(1)',
@@ -423,7 +862,6 @@ export function getRoleBasedCodingChallenges(
   difficulty: DifficultyLevel = 'intermediate'
 ): CodingChallenge[] {
   if (difficulty === 'beginner') {
-    // Beginner: Arrays & Strings
     return [
       ROLE_DSA_CHALLENGES.find((c) => c.id === 'dsa-two-sum')!,
       ROLE_DSA_CHALLENGES.find((c) => c.id === 'dsa-valid-palindrome')!,
@@ -431,24 +869,23 @@ export function getRoleBasedCodingChallenges(
   }
 
   if (difficulty === 'advanced') {
-    // Advanced: Graphs & Advanced Structures
     return [
       ROLE_DSA_CHALLENGES.find((c) => c.id === 'dsa-number-of-islands')!,
       ROLE_DSA_CHALLENGES.find((c) => c.id === 'dsa-course-schedule')!,
     ];
   }
 
-  // Intermediate: Strings, Arrays, Sliding Window
   return [
     ROLE_DSA_CHALLENGES.find((c) => c.id === 'dsa-two-sum')!,
     ROLE_DSA_CHALLENGES.find((c) => c.id === 'dsa-longest-substring')!,
   ];
 }
 
-export function evaluateCodingFallback(code: string, challenge: CodingChallenge): CodingEvaluation {
+export function evaluateCodingFallback(code: string, challenge: CodingChallenge, language?: string): CodingEvaluation {
   const trimmed = code.trim();
+  const currentStarter = (challenge.starterCodes && language && (challenge.starterCodes as any)[language]) || challenge.starterCode;
 
-  if (trimmed.length < 25 || trimmed === challenge.starterCode.trim()) {
+  if (trimmed.length < 25 || trimmed === currentStarter.trim()) {
     return {
       score: 20,
       passed: false,
@@ -467,7 +904,18 @@ export function evaluateCodingFallback(code: string, challenge: CodingChallenge)
   let timeComplexity = 'O(n)';
   let spaceComplexity = 'O(n)';
 
-  if (code.includes('Map') || code.includes('Set') || code.includes('dfs') || code.includes('bfs')) {
+  const lower = code.toLowerCase();
+  if (
+    lower.includes('map') ||
+    lower.includes('dict') ||
+    lower.includes('set') ||
+    lower.includes('dfs') ||
+    lower.includes('bfs') ||
+    lower.includes('unordered_map') ||
+    lower.includes('hashmap') ||
+    lower.includes('vector') ||
+    lower.includes('malloc')
+  ) {
     score += 10;
   }
 
@@ -478,7 +926,7 @@ export function evaluateCodingFallback(code: string, challenge: CodingChallenge)
     timeComplexity,
     spaceComplexity,
     codeQuality: 85,
-    feedback: `Good attempt on ${challenge.title}. Core algorithmic structure demonstrates understanding of the problem.`,
+    feedback: `Good attempt on ${challenge.title} in ${language || challenge.language || 'code'}. Core algorithmic structure demonstrates understanding of the problem.`,
     edgeCasesCovered: ['Standard input bounds', 'Valid returns'],
     edgeCasesMissed: ['Extreme boundary constraints'],
   };
