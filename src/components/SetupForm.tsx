@@ -429,20 +429,15 @@ export default function SetupForm({
               </select>
             </div>
 
-            {/* Length */}
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                Verbal Question Count
-              </label>
-              <select
-                value={questionCount}
-                onChange={(e) => setQuestionCount(Number(e.target.value))}
-                className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-indigo-600 shadow-xs"
-              >
-                <option value={3}>Concise Check (3 Questions)</option>
-                <option value={5}>Standard Mock (5 Questions - Recommended)</option>
-                <option value={7}>Comprehensive (7 Questions)</option>
-              </select>
+            {/* Adaptive Session Calibration Protocol */}
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-center">
+              <div className="flex items-center space-x-1.5 text-xs font-semibold text-slate-800">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Adaptive Protocol: 5 to 12 Questions</span>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                Interviewer calibrates session depth dynamically. Consistent, high-signal answers conclude at 5 questions; incomplete answers prompt deeper probing up to 12.
+              </p>
             </div>
           </div>
         </div>

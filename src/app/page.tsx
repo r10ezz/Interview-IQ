@@ -236,10 +236,12 @@ export default function Home() {
           currentQuestion,
           candidateAnswer: answer,
           questionIndex: currentQuestionIndex,
-          totalQuestions: setupConfig.questionCount,
           previousHistory: interviewHistory,
           allQuestions,
           currentDifficulty,
+          candidateAnalysis,
+          jobDescription: setupConfig.jobDescription,
+          resumeText: setupConfig.resumeText,
           customApiKey: apiKey || undefined,
         }),
       });
@@ -271,6 +273,7 @@ export default function Home() {
           isFollowUp: false,
           newDifficulty: data.newDifficulty || currentDifficulty,
           isComplete: true,
+          interviewerNote: data.interviewerNote,
         };
       }
 
@@ -284,6 +287,7 @@ export default function Home() {
         isFollowUp: data.isFollowUp || false,
         newDifficulty: data.newDifficulty || currentDifficulty,
         isComplete: false,
+        interviewerNote: data.interviewerNote,
       };
     } catch (err) {
       console.error('Answer evaluation error:', err);

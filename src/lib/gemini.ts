@@ -517,6 +517,98 @@ Return strictly a JSON object:
 }
 
 /**
+ * Dynamically generates an adaptive probing question when the initial question pool is exhausted
+ * and the interviewer needs to probe deeper (adaptive session length between 5 and 12 questions).
+ */
+export async function generateAdaptiveNextQuestion(
+  analysis: CandidateAnalysis,
+  resumeText: string,
+  jobDescription: string,
+  previousHistory: InterviewExchange[],
+  currentDifficulty: DifficultyLevel,
+  customApiKey?: string
+): Promise<InterviewQuestion> {
+  const client = getGeminiClient(customApiKey);
+  const questionNumber = previousHistory.length + 1;
+  const askedQuestions = previousHistory.map(h => h.question.text);
+  const askedCategories = previousHistory.map(h => h.question.category || h.question.targetSkillOrProject);
+
+  if (client) {
+    for (const modelName of GEMINI_MODELS) {
+      try {
+        const model = client.getGenerativeModel({
+          model: modelName,
+          generationConfig: {
+            responseMimeType: 'application/json',
+            temperature: 0.3,
+          },
+        });
+
+        const prompt = `You are Sarah, an experienced Principal Engineering Lead conducting a technical interview.
+Candidate: "${analysis.candidateName}"
+Current Progress: Question ${questionNumber} of max 12.
+Candidate Target Skills: ${analysis.technicalSkills.join(', ')}
+
+TOPICS PREVIOUSLY ASKED:
+${askedCategories.join(', ')}
+
+RECENT CANDIDATE PERFORMANCE & MISSING POINTS:
+${previousHistory.slice(-3).map((h, i) => `Q: "${h.question.text}" -> Score: ${h.evaluation.score}/100. Gaps: ${h.evaluation.keyMissingPoints.slice(0, 2).join('; ') || 'None'}`).join('\n')}
+
+OBJECTIVE:
+The candidate needs further probing to establish conclusive signal.
+Formulate 1 targeted, realistic 1-2 sentence technical question.
+Focus on an unverified skill, an edge case from their resume, or a core architectural mechanism (e.g. database transactions, caching, error recovery, async concurrency, security, or API design).
+Keep the question short, conversational, and direct (1-2 sentences max).
+
+Return strictly a JSON object:
+{
+  "id": "q-adapt-${questionNumber}",
+  "roundType": "foundation",
+  "skillStage": "Stage ${questionNumber}: Adaptive Competency Probe",
+  "text": "Short 1-2 sentence direct question",
+  "type": "job-requirement",
+  "category": "e.g. Database Indexing or Concurrency",
+  "targetSkillOrProject": "e.g. PostgreSQL or React",
+  "difficulty": "${currentDifficulty}",
+  "suggestedDurationSeconds": 90
+}
+`;
+        const result = await withTimeout(model.generateContent(prompt), 6000);
+        const parsed = JSON.parse(cleanJsonText(result.response.text())) as InterviewQuestion;
+        if (parsed && parsed.text) {
+          return {
+            ...parsed,
+            id: parsed.id || `q-adapt-${questionNumber}`,
+            difficulty: parsed.difficulty || currentDifficulty,
+            roundType: parsed.roundType || 'foundation',
+          };
+        }
+      } catch (err) {
+        console.warn(`[InterviewIQ] Gemini generateAdaptiveNextQuestion failed on ${modelName}:`, err);
+      }
+    }
+  }
+
+  // Dynamic fallback from expanded pool
+  const fallbackBank = generateFallbackQuestions(analysis, 'mixed', currentDifficulty, 12, ['foundation', 'behavioral']);
+  const askedTexts = new Set(askedQuestions);
+  const unused = fallbackBank.find(q => !askedTexts.has(q.text));
+
+  return unused || {
+    id: `q-adapt-${questionNumber}`,
+    roundType: 'foundation',
+    skillStage: `Stage ${questionNumber}: Core Architecture Probe`,
+    text: `${analysis.candidateName}, how do you approach error logging, monitoring, and diagnosing production performance bottlenecks in your backend services?`,
+    type: 'job-requirement',
+    category: 'Production Reliability',
+    targetSkillOrProject: 'Observability',
+    difficulty: currentDifficulty,
+    suggestedDurationSeconds: 90,
+  };
+}
+
+/**
  * Generates comprehensive final performance evaluation and report.
  */
 export async function generateFinalEvaluation(

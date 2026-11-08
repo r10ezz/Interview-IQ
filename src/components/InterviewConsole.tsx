@@ -27,7 +27,7 @@ import {
 interface InterviewConsoleProps {
   currentQuestion: InterviewQuestion;
   questionIndex: number;
-  totalQuestions: number;
+  totalQuestions?: number;
   currentDifficulty: DifficultyLevel;
   allQuestions?: InterviewQuestion[];
   onSubmitAnswer: (answer: string) => Promise<{
@@ -36,6 +36,7 @@ interface InterviewConsoleProps {
     isFollowUp: boolean;
     newDifficulty: DifficultyLevel;
     isComplete: boolean;
+    interviewerNote?: string;
   }>;
   onFinishInterview: () => void;
   onProceedToCoding?: () => void;
@@ -46,7 +47,7 @@ interface InterviewConsoleProps {
 export default function InterviewConsole({
   currentQuestion,
   questionIndex,
-  totalQuestions,
+  totalQuestions = 5,
   currentDifficulty,
   allQuestions = [],
   onSubmitAnswer,
@@ -72,6 +73,7 @@ export default function InterviewConsole({
     isFollowUp: boolean;
     newDifficulty: DifficultyLevel;
     isComplete: boolean;
+    interviewerNote?: string;
   } | null>(null);
 
   const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null);
@@ -307,8 +309,11 @@ export default function InterviewConsole({
                   {currentStageName}
                 </span>
                 <span className="text-xs text-slate-400">•</span>
-                <span className="text-xs text-slate-600">
-                  Question {questionIndex + 1} of {totalQuestions}
+                <span className="text-xs font-semibold text-slate-700">
+                  Question {questionIndex + 1}
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 font-medium">
+                  {questionIndex < 5 ? 'Core Signal (Min 5)' : `Adaptive Depth (Q${questionIndex + 1} of 12 max)`}
                 </span>
               </div>
               <p className="text-[11px] text-slate-500">
@@ -345,24 +350,40 @@ export default function InterviewConsole({
           </div>
         </div>
 
-        {/* Minimalist Stage Timeline */}
-        <div className="mt-3 grid grid-cols-3 sm:grid-cols-4 gap-1.5">
-          {Array.from({ length: totalQuestions }).map((_, idx) => {
-            const isCompleted = idx < questionIndex;
-            const isCurrent = idx === questionIndex;
-            return (
-              <div
-                key={idx}
-                className={`h-1.5 rounded-full transition-all duration-300 ${
-                  isCompleted
-                    ? 'bg-emerald-500'
-                    : isCurrent
-                    ? 'bg-indigo-600 shadow-xs'
-                    : 'bg-slate-200'
-                }`}
-              />
-            );
-          })}
+        {/* Adaptive Interview Depth Indicator */}
+        <div className="mt-3">
+          <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1.5 font-medium">
+            <span>
+              {questionIndex < 5
+                ? `Core Competency Baseline (${questionIndex + 1}/5 minimum required)`
+                : `Interviewer Deep Probing (${questionIndex + 1}/12 max depth)`}
+            </span>
+            <span className="text-indigo-600 font-semibold text-[10px] uppercase tracking-wide">
+              {questionIndex < 5 ? 'Baseline Calibration' : 'Adaptive Signal Extension'}
+            </span>
+          </div>
+          <div className="grid grid-cols-6 sm:grid-cols-12 gap-1.5">
+            {Array.from({ length: Math.max(5, Math.min(12, Math.max(questionIndex + 1, 5))) }).map((_, idx) => {
+              const isCompleted = idx < questionIndex;
+              const isCurrent = idx === questionIndex;
+              const isExtended = idx >= 5;
+              return (
+                <div
+                  key={idx}
+                  title={isExtended ? `Probing Question ${idx + 1}` : `Foundational Question ${idx + 1}`}
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    isCompleted
+                      ? 'bg-emerald-500'
+                      : isCurrent
+                      ? 'bg-indigo-600 ring-2 ring-indigo-200'
+                      : isExtended
+                      ? 'bg-amber-100 border border-dashed border-amber-300'
+                      : 'bg-slate-200'
+                  }`}
+                />
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -457,6 +478,16 @@ export default function InterviewConsole({
           <p className="text-xs sm:text-sm text-slate-800 leading-relaxed mb-4">
             {lastExchange.evaluation.quickFeedback}
           </p>
+
+          {lastExchange.interviewerNote && (
+            <div className="mb-4 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 flex items-start space-x-2.5">
+              <Bot className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+              <div>
+                <strong className="text-slate-900 font-semibold">Interviewer Calibration: </strong>
+                <span>{lastExchange.interviewerNote}</span>
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-end pt-1 gap-2">
             {lastExchange.isComplete ? (

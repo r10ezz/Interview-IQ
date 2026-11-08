@@ -27,7 +27,8 @@ export async function POST(req: NextRequest) {
       ? selectedRounds as InterviewRoundType[]
       : ['foundation', 'coding', 'behavioral'] as InterviewRoundType[];
 
-    const count = typeof interviewLength === 'number' ? Math.min(10, Math.max(2, interviewLength)) : 5;
+    // Seed an initial pool of 7 foundational and behavioral questions
+    const count = 7;
 
     // 1. Generate verbal questions if foundation or behavioral rounds are selected
     let questions: any[] = [];

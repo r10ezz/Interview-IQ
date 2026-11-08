@@ -233,6 +233,61 @@ export function generateFallbackQuestions(
       difficulty: 'intermediate',
       suggestedDurationSeconds: 90,
       text: `Looking at your resume, you worked on "${topProject}". Could you give a brief overview of what this project does and what your primary technical responsibilities were?`,
+    },
+    {
+      id: 'q-fnd-5',
+      roundType: 'foundation',
+      skillStage: `Stage 5: State Management & Rendering`,
+      type: 'job-requirement',
+      category: `${primarySkill} Internals`,
+      targetSkillOrProject: primarySkill,
+      difficulty: 'intermediate',
+      suggestedDurationSeconds: 90,
+      text: `How does React determine when to re-render a component, and what strategies do you use to prevent unnecessary re-renders?`,
+    },
+    {
+      id: 'q-fnd-6',
+      roundType: 'foundation',
+      skillStage: `Stage 6: Concurrency & Asynchronous Flow`,
+      type: 'fundamental',
+      category: `JavaScript Runtime`,
+      targetSkillOrProject: primarySkill,
+      difficulty: difficulty === 'advanced' ? 'advanced' : 'intermediate',
+      suggestedDurationSeconds: 90,
+      text: `Can you explain the JavaScript Event Loop, specifically the execution order between the call stack, microtasks (Promises), and macrotasks (setTimeout)?`,
+    },
+    {
+      id: 'q-fnd-7',
+      roundType: 'foundation',
+      skillStage: `Stage 7: Database & Caching Architecture`,
+      type: 'job-requirement',
+      category: `${secondarySkill} Performance`,
+      targetSkillOrProject: secondarySkill,
+      difficulty: 'intermediate',
+      suggestedDurationSeconds: 90,
+      text: `When an application experiences high read traffic, how would you design a caching layer with Redis or in-memory caches, and how do you handle cache invalidation?`,
+    },
+    {
+      id: 'q-fnd-8',
+      roundType: 'foundation',
+      skillStage: `Stage 8: Web Security & Authentication`,
+      type: 'fundamental',
+      category: `Security & Auth`,
+      targetSkillOrProject: 'Authentication',
+      difficulty: 'intermediate',
+      suggestedDurationSeconds: 90,
+      text: `What is the difference between session-based authentication and JWT tokens, and where should sensitive tokens be stored in the browser to prevent XSS attacks?`,
+    },
+    {
+      id: 'q-fnd-9',
+      roundType: 'foundation',
+      skillStage: `Stage 9: Production Error Handling`,
+      type: 'job-requirement',
+      category: `Reliability & APIs`,
+      targetSkillOrProject: secondarySkill,
+      difficulty: 'intermediate',
+      suggestedDurationSeconds: 90,
+      text: `In a production API, how do you handle unexpected uncaught errors so that the server remains resilient and returns meaningful error responses to clients?`,
     }
   ];
 
@@ -258,14 +313,37 @@ export function generateFallbackQuestions(
       difficulty: 'intermediate',
       suggestedDurationSeconds: 90,
       text: `Tell me about a time you had to learn a new tool, language, or framework quickly to meet a deadline. How did you get up to speed?`,
+    },
+    {
+      id: 'q-beh-3',
+      roundType: 'behavioral',
+      skillStage: `Behavioral: Team Collaboration & Conflict`,
+      type: 'behavioral',
+      category: `Collaboration & Engineering Standards`,
+      targetSkillOrProject: 'Teamwork',
+      difficulty: 'intermediate',
+      suggestedDurationSeconds: 90,
+      text: `Describe a situation where you and a teammate or reviewer had different opinions on a technical implementation or pull request. How did you reach a consensus?`,
     }
   ];
 
   let combined: InterviewQuestion[] = [];
   if (isFoundation && isBehavioral) {
-    const fndCount = Math.max(1, Math.ceil(count / 2));
-    const behCount = count - fndCount;
-    combined = [...foundationQuestions.slice(0, fndCount), ...behavioralQuestions.slice(0, behCount)];
+    // Interleave foundation and behavioral
+    combined = [
+      foundationQuestions[0],
+      foundationQuestions[1],
+      foundationQuestions[2],
+      foundationQuestions[3],
+      behavioralQuestions[0],
+      foundationQuestions[4],
+      foundationQuestions[5],
+      behavioralQuestions[1],
+      foundationQuestions[6],
+      foundationQuestions[7],
+      behavioralQuestions[2],
+      foundationQuestions[8],
+    ].filter(Boolean);
   } else if (isFoundation) {
     combined = foundationQuestions;
   } else if (isBehavioral) {
@@ -274,7 +352,7 @@ export function generateFallbackQuestions(
     combined = foundationQuestions;
   }
 
-  return combined.slice(0, count);
+  return combined.slice(0, Math.min(12, Math.max(5, count)));
 }
 
 export function generateFallbackAnswerEvaluation(
