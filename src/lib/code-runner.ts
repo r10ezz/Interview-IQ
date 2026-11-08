@@ -37,16 +37,35 @@ function getExecutionEnv(): NodeJS.ProcessEnv {
   };
 }
 
-// Identify challenge type by id, title, or keywords
+// Detect if candidate code is a full standalone program with main/stdin reading
+export function isStandardIOProgram(code: string, language: string): boolean {
+  const normLang = language.toLowerCase();
+  if (normLang === 'c' || normLang === 'cpp' || normLang === 'c++') {
+    return /\bint\s+main\s*\(|\bvoid\s+main\s*\(/.test(code);
+  }
+  if (normLang === 'java') {
+    return /\bpublic\s+static\s+void\s+main\s*\(/.test(code);
+  }
+  if (normLang === 'python') {
+    return /\binput\s*\(|sys\.stdin|if\s+__name__\s*==\s*['"]__main__['"]/.test(code);
+  }
+  if (normLang === 'javascript' || normLang === 'typescript') {
+    return /\breadFileSync\s*\(0|\breadline\b/.test(code);
+  }
+  return false;
+}
+
+// Identify challenge type by id, title, description, or function keywords
 export function resolveChallengeType(challenge: CodingChallenge): string {
   const id = (challenge.id || '').toLowerCase();
   const title = (challenge.title || '').toLowerCase();
+  const desc = (challenge.description || '').toLowerCase();
   const starter = (challenge.starterCode || '').toLowerCase();
 
   if (id.includes('two-sum') || title.includes('two sum') || starter.includes('twosum')) return 'two-sum';
-  if (id.includes('palindrome') || title.includes('palindrome') || starter.includes('palindrome')) return 'valid-palindrome';
+  if (id.includes('palindrome') || title.includes('palindrome') || starter.includes('palindrome') || starter.includes('ispalindrome')) return 'valid-palindrome';
   if (id.includes('stock') || title.includes('stock') || starter.includes('maxprofit')) return 'best-time-stock';
-  if (id.includes('substring') || title.includes('substring') || starter.includes('longestsubstring')) return 'longest-substring';
+  if (id.includes('substring') || title.includes('substring') || starter.includes('longestsubstring') || starter.includes('lengthoflongestsubstring')) return 'longest-substring';
   if (id.includes('parenthes') || title.includes('parenthes') || starter.includes('isvalid')) return 'valid-parentheses';
   if (id.includes('island') || title.includes('island') || starter.includes('numislands')) return 'number-of-islands';
   if (id.includes('course') || title.includes('course') || starter.includes('canfinish') || starter.includes('shard')) return 'course-schedule';
@@ -55,43 +74,102 @@ export function resolveChallengeType(challenge: CodingChallenge): string {
   return 'generic';
 }
 
+// Extract expected entry function or class name from challenge definition
+export function getExpectedFunctionName(challenge: CodingChallenge): string {
+  const starter = challenge.starterCode || '';
+  const fnMatch = starter.match(/function\s+([a-zA-Z0-9_]+)/);
+  if (fnMatch) return fnMatch[1];
+  const defMatch = starter.match(/def\s+([a-zA-Z0-9_]+)/);
+  if (defMatch) return defMatch[1];
+  const classMatch = starter.match(/class\s+([a-zA-Z0-9_]+)/);
+  if (classMatch) return classMatch[1];
+
+  const type = resolveChallengeType(challenge);
+  switch (type) {
+    case 'two-sum': return 'twoSum';
+    case 'valid-palindrome': return 'isPalindrome';
+    case 'best-time-stock': return 'maxProfit';
+    case 'longest-substring': return 'lengthOfLongestSubstring';
+    case 'valid-parentheses': return 'isValid';
+    case 'number-of-islands': return 'numIslands';
+    case 'course-schedule': return 'canFinish';
+    case 'lru-cache': return 'LRUCache';
+    default: return 'solve';
+  }
+}
+
 // Safely evaluate assignment string like: "nums = [2, 7, 11, 15], target = 9"
 export function parseInputVariables(inputStr: string): Record<string, any> {
-  const context = vm.createContext({});
-  try {
-    vm.runInContext('var ' + inputStr, context, { timeout: 500 });
-  } catch {
+  const trimmed = inputStr.trim();
+
+  // 1. JSON object parsing
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
     try {
-      vm.runInContext(inputStr, context, { timeout: 500 });
+      const obj = JSON.parse(trimmed);
+      if (typeof obj === 'object' && obj !== null && !Array.isArray(obj)) {
+        return obj;
+      }
     } catch {}
   }
-  const result: Record<string, any> = {};
-  for (const [k, v] of Object.entries(context)) {
-    if (k !== 'console' && typeof v !== 'function') {
-      result[k] = v;
+
+  // 2. VM safe assignment evaluation
+  const context = vm.createContext({});
+  try {
+    vm.runInContext('var ' + trimmed + ';', context, { timeout: 500 });
+    const result: Record<string, any> = {};
+    for (const [k, v] of Object.entries(context)) {
+      if (k !== 'console' && typeof v !== 'function') {
+        result[k] = v;
+      }
     }
-  }
-  return result;
+    if (Object.keys(result).length > 0) return result;
+  } catch {}
+
+  // 3. Fallback direct evaluation
+  try {
+    vm.runInContext(trimmed + ';', context, { timeout: 500 });
+    const result: Record<string, any> = {};
+    for (const [k, v] of Object.entries(context)) {
+      if (k !== 'console' && typeof v !== 'function') {
+        result[k] = v;
+      }
+    }
+    if (Object.keys(result).length > 0) return result;
+  } catch {}
+
+  // 4. Raw input fallback
+  return { input: trimmed };
 }
 
 // Check if an actual string output matches expected output
 export function checkTestPassed(actual: string, expected: string): boolean {
-  const cleanActual = actual.trim();
-  const cleanExpected = expected.trim();
+  if (actual === undefined || actual === null) return false;
+  const cleanActual = String(actual).trim();
+  const cleanExpected = String(expected).trim();
 
-  // Boolean check
-  if (cleanExpected.toLowerCase() === 'true' || cleanExpected.toLowerCase() === 'false') {
-    return cleanActual.toLowerCase() === cleanExpected.toLowerCase();
+  // 1. Direct string match (case-insensitive for booleans/text)
+  if (cleanActual === cleanExpected || cleanActual.toLowerCase() === cleanExpected.toLowerCase()) {
+    return true;
   }
 
-  // Number check
+  // 2. Boolean normalization (including C 1/0)
+  const isExpTrue = cleanExpected.toLowerCase() === 'true';
+  const isExpFalse = cleanExpected.toLowerCase() === 'false';
+  if (isExpTrue) {
+    if (cleanActual.toLowerCase() === 'true' || cleanActual === '1') return true;
+  }
+  if (isExpFalse) {
+    if (cleanActual.toLowerCase() === 'false' || cleanActual === '0') return true;
+  }
+
+  // 3. Floating-point and integer number comparison
   const numActual = Number(cleanActual);
   const numExpected = Number(cleanExpected);
   if (!isNaN(numActual) && !isNaN(numExpected) && cleanActual !== '' && cleanExpected !== '') {
-    return numActual === numExpected;
+    if (Math.abs(numActual - numExpected) < 1e-6) return true;
   }
 
-  // Array / JSON check
+  // 4. JSON / Array / Object comparison
   try {
     const parsedActual = JSON.parse(cleanActual);
     const parsedExpected = JSON.parse(cleanExpected);
@@ -104,18 +182,24 @@ export function checkTestPassed(actual: string, expected: string): boolean {
     if (
       Array.isArray(parsedActual) &&
       Array.isArray(parsedExpected) &&
-      parsedActual.length === parsedExpected.length &&
-      typeof parsedActual[0] === 'number'
+      parsedActual.length === parsedExpected.length
     ) {
-      const sortedActual = [...parsedActual].sort((a, b) => a - b);
-      const sortedExpected = [...parsedExpected].sort((a, b) => a - b);
-      return JSON.stringify(sortedActual) === JSON.stringify(sortedExpected);
+      if (typeof parsedActual[0] === 'number') {
+        const sortedActual = [...parsedActual].sort((a, b) => a - b);
+        const sortedExpected = [...parsedExpected].sort((a, b) => a - b);
+        if (JSON.stringify(sortedActual) === JSON.stringify(sortedExpected)) return true;
+      }
     }
-  } catch {
-    // String comparison fallback
+  } catch {}
+
+  // 5. String quotes stripping (e.g. "\"true\"" vs "true")
+  const unquotedActual = cleanActual.replace(/^["']|["']$/g, '');
+  const unquotedExpected = cleanExpected.replace(/^["']|["']$/g, '');
+  if (unquotedActual === unquotedExpected || unquotedActual.toLowerCase() === unquotedExpected.toLowerCase()) {
+    return true;
   }
 
-  return cleanActual.toLowerCase() === cleanExpected.toLowerCase();
+  return false;
 }
 
 /**
@@ -131,12 +215,13 @@ export async function executeC(
   const exeFile = path.join(tmpDir, 'solution.exe');
 
   try {
-    const harness = buildCHarness(code, challenge);
+    const isStdinMode = isStandardIOProgram(code, 'c');
+    const harness = isStdinMode ? code : buildCHarness(code, challenge);
     fs.writeFileSync(srcFile, harness, 'utf8');
 
     const env = getExecutionEnv();
     try {
-      execFileSync('gcc', ['-std=c17', '-O2', srcFile, '-o', exeFile], {
+      execFileSync('gcc', ['-std=c17', '-O2', '-Wall', '-Wno-unused-result', srcFile, '-o', exeFile], {
         env,
         timeout: 6000,
         encoding: 'utf8',
@@ -161,6 +246,12 @@ export async function executeC(
       };
     }
 
+    if (isStdinMode) {
+      // Execute each test case via stdin
+      return executePerTestCaseStdin(exeFile, challenge, env, startTime, 'GCC 15.2 (C17) — Stdin/Stdout Mode');
+    }
+
+    // Run driver binary
     let stdout = '';
     try {
       stdout = execFileSync(exeFile, [], {
@@ -208,12 +299,13 @@ export async function executeCpp(
   const exeFile = path.join(tmpDir, 'solution.exe');
 
   try {
-    const harness = buildCppHarness(code, challenge);
+    const isStdinMode = isStandardIOProgram(code, 'cpp');
+    const harness = isStdinMode ? code : buildCppHarness(code, challenge);
     fs.writeFileSync(srcFile, harness, 'utf8');
 
     const env = getExecutionEnv();
     try {
-      execFileSync('g++', ['-std=c++17', '-O2', srcFile, '-o', exeFile], {
+      execFileSync('g++', ['-std=c++17', '-O2', '-Wall', '-Wno-unused-result', srcFile, '-o', exeFile], {
         env,
         timeout: 6000,
         encoding: 'utf8',
@@ -236,6 +328,10 @@ export async function executeCpp(
           logs: [],
         })),
       };
+    }
+
+    if (isStdinMode) {
+      return executePerTestCaseStdin(exeFile, challenge, env, startTime, 'G++ 15.2 (C++17) — Stdin/Stdout Mode');
     }
 
     let stdout = '';
@@ -284,12 +380,13 @@ export async function executeJava(
   const srcFile = path.join(tmpDir, 'SolutionRunner.java');
 
   try {
-    const harness = buildJavaHarness(code, challenge);
+    const isStdinMode = isStandardIOProgram(code, 'java');
+    const harness = isStdinMode ? sanitizeJavaStdinCode(code) : buildJavaHarness(code, challenge);
     fs.writeFileSync(srcFile, harness, 'utf8');
 
     const env = getExecutionEnv();
     try {
-      execFileSync('javac', [srcFile], {
+      execFileSync('javac', ['-encoding', 'UTF-8', srcFile], {
         env,
         timeout: 6000,
         encoding: 'utf8',
@@ -312,6 +409,10 @@ export async function executeJava(
           logs: [],
         })),
       };
+    }
+
+    if (isStdinMode) {
+      return executeJavaPerTestCaseStdin(tmpDir, challenge, env, startTime, 'OpenJDK 21 — Stdin/Stdout Mode');
     }
 
     let stdout = '';
@@ -349,43 +450,61 @@ export async function executeJava(
 }
 
 /**
- * Execute Python Code
+ * Execute Python Code (Isolated via temporary script file to prevent command-line quoting issues)
  */
 export async function executePython(
   code: string,
   challenge: CodingChallenge
 ): Promise<CodeExecutionResponse> {
   const startTime = Date.now();
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'iq-py-run-'));
+  const pyFile = path.join(tmpDir, 'solution.py');
   const env = getExecutionEnv();
-  const harness = buildPythonHarness(code, challenge);
 
   try {
-    const stdout = execFileSync('python', ['-c', harness], {
-      env,
-      timeout: 3000,
-      encoding: 'utf8',
-    });
-    return parseHarnessOutput(stdout, challenge, startTime, 'Python 3.12 — Execution Completed');
-  } catch (runErr: any) {
-    const isTimeout = runErr.signal === 'SIGTERM' || runErr.code === 'ETIMEDOUT';
-    const stderr = runErr.stderr || runErr.message || 'Python execution failed';
-    const isSyntaxErr = /SyntaxError|IndentationError/.test(stderr);
+    const isStdinMode = isStandardIOProgram(code, 'python');
+    const harness = isStdinMode ? code : buildPythonHarness(code, challenge);
+    fs.writeFileSync(pyFile, harness, 'utf8');
 
-    return {
-      status: isSyntaxErr ? 'Compilation Error' : isTimeout ? 'Time Limit Exceeded' : 'Runtime Error',
-      runtimeMs: Date.now() - startTime,
-      allPassed: false,
-      compilationError: isSyntaxErr ? stderr : undefined,
-      compilerOutput: isSyntaxErr ? `Python Syntax Error:\n${stderr}` : `Python 3.12 Runtime Error:\n${stderr}`,
-      testResults: challenge.sampleTestCases.map((tc, idx) => ({
-        caseNumber: idx + 1,
-        passed: false,
-        input: tc.input,
-        expected: tc.expectedOutput,
-        actual: isTimeout ? 'Time Limit Exceeded (> 3.0s)' : (isSyntaxErr ? 'SyntaxError: ' : 'Runtime Error: ') + stderr.split('\n').filter(Boolean).pop(),
-        logs: [],
-      })),
-    };
+    if (isStdinMode) {
+      return executePythonPerTestCaseStdin(pyFile, challenge, env, startTime);
+    }
+
+    let stdout = '';
+    try {
+      stdout = execFileSync('python', [pyFile], {
+        cwd: tmpDir,
+        env,
+        timeout: 3500,
+        encoding: 'utf8',
+      });
+    } catch (runErr: any) {
+      const isTimeout = runErr.signal === 'SIGTERM' || runErr.code === 'ETIMEDOUT';
+      const stderr = runErr.stderr || runErr.message || 'Python execution failed';
+      const isSyntaxErr = /SyntaxError|IndentationError/.test(stderr);
+
+      return {
+        status: isSyntaxErr ? 'Compilation Error' : isTimeout ? 'Time Limit Exceeded' : 'Runtime Error',
+        runtimeMs: Date.now() - startTime,
+        allPassed: false,
+        compilationError: isSyntaxErr ? stderr : undefined,
+        compilerOutput: isSyntaxErr ? `Python Syntax Error:\n${stderr}` : `Python 3.12 Runtime Error:\n${stderr}`,
+        testResults: challenge.sampleTestCases.map((tc, idx) => ({
+          caseNumber: idx + 1,
+          passed: false,
+          input: tc.input,
+          expected: tc.expectedOutput,
+          actual: isTimeout ? 'Time Limit Exceeded (> 3.0s)' : (isSyntaxErr ? 'SyntaxError: ' : 'Runtime Error: ') + stderr.split('\n').filter(Boolean).pop(),
+          logs: [],
+        })),
+      };
+    }
+
+    return parseHarnessOutput(stdout, challenge, startTime, 'Python 3.12 — Execution Completed');
+  } finally {
+    try {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    } catch {}
   }
 }
 
@@ -402,7 +521,14 @@ export async function executeNodeVM(
 
   if (language === 'typescript') {
     try {
-      jsCode = ts.transpile(code);
+      const transpiled = ts.transpileModule(code, {
+        compilerOptions: {
+          target: ts.ScriptTarget.ES2022,
+          module: ts.ModuleKind.CommonJS,
+          allowJs: true,
+        },
+      });
+      jsCode = transpiled.outputText;
     } catch (transpileErr: any) {
       return {
         status: 'Compilation Error',
@@ -426,12 +552,7 @@ export async function executeNodeVM(
   let allPassed = true;
   let hasRuntimeError = false;
 
-  let expectedFnName = '';
-  const starterFnMatch = challenge.starterCode.match(/function\s+([a-zA-Z0-9_]+)/);
-  const starterClassMatch = challenge.starterCode.match(/class\s+([a-zA-Z0-9_]+)/);
-  if (starterFnMatch) expectedFnName = starterFnMatch[1];
-  else if (starterClassMatch) expectedFnName = starterClassMatch[1];
-
+  const expectedFnName = getExpectedFunctionName(challenge);
   const probType = resolveChallengeType(challenge);
 
   for (let i = 0; i < challenge.sampleTestCases.length; i++) {
@@ -497,7 +618,7 @@ export async function executeNodeVM(
           const __args = Object.values(__input);
           result = __targetFn(...__args);
         } else {
-          throw new Error('Could not find function ${expectedFnName || 'solution'}. Please define it.');
+          throw new Error('Could not find function ${expectedFnName || 'solution'}. Please ensure your function is defined.');
         }
       `;
     }
@@ -512,6 +633,17 @@ export async function executeNodeVM(
       if (actualOutput === undefined) actualOutput = String(res);
 
       tcPassed = checkTestPassed(actualOutput, tc.expectedOutput);
+
+      // If return value didn't match, check if candidate printed the answer to console
+      if (!tcPassed && logs.length > 0) {
+        for (const logLine of logs) {
+          if (checkTestPassed(logLine, tc.expectedOutput)) {
+            tcPassed = true;
+            actualOutput = logLine;
+            break;
+          }
+        }
+      }
     } catch (err: any) {
       hasRuntimeError = true;
       actualOutput = 'Runtime Error: ' + (err.message || String(err));
@@ -595,8 +727,18 @@ function parseHarnessOutput(
 
   for (let i = 0; i < challenge.sampleTestCases.length; i++) {
     const tc = challenge.sampleTestCases[i];
-    const actual = resultMap.get(i + 1) ?? (stdout.trim() ? `Output: ${stdout.trim()}` : 'No output produced');
-    const passed = checkTestPassed(actual, tc.expectedOutput);
+    const actual = resultMap.get(i + 1) ?? (stdout.trim() ? stdout.trim() : 'No output produced');
+    let passed = checkTestPassed(actual, tc.expectedOutput);
+
+    // Fallback: check if user printed expected output to logs
+    if (!passed && userLogs.length > 0) {
+      for (const logLine of userLogs) {
+        if (checkTestPassed(logLine, tc.expectedOutput)) {
+          passed = true;
+          break;
+        }
+      }
+    }
 
     if (!passed) allPassed = false;
 
@@ -622,7 +764,7 @@ function parseHarnessOutput(
 
 function buildCHarness(code: string, challenge: CodingChallenge): string {
   const probType = resolveChallengeType(challenge);
-  let harness = `#include <stdio.h>\n#include <stdlib.h>\n#include <stdbool.h>\n#include <string.h>\n#include <ctype.h>\n#include <math.h>\n\n`;
+  let harness = `#include <stdio.h>\n#include <stdlib.h>\n#include <stdbool.h>\n#include <string.h>\n#include <ctype.h>\n#include <math.h>\n#include <limits.h>\n\n`;
   harness += code + '\n\n';
   harness += `void __print_int_array(int* arr, int size) {\n  printf("[");\n  for(int i = 0; i < size; i++) {\n    printf("%d%s", arr[i], (i + 1 < size ? ", " : ""));\n  }\n  printf("]");\n}\n\n`;
   harness += `int main() {\n`;
@@ -696,11 +838,11 @@ function buildCHarness(code: string, challenge: CodingChallenge): string {
         harness += `    LRUCache* c = lRUCacheCreate(2);\n`;
         harness += `    lRUCachePut(c, 1, 1);\n`;
         harness += `    lRUCachePut(c, 2, 2);\n`;
-        harness += `    lRUCacheGet(c, 1);\n`;
+        harness += `    int res = lRUCacheGet(c, 1);\n`;
         harness += `    lRUCachePut(c, 3, 3);\n`;
-        harness += `    int res = lRUCacheGet(c, 2);\n`;
-        harness += `    if (res == -1) printf("CASE_RESULT:${caseNum}:Evicts key 2 (least recently used)\\n");\n`;
-        harness += `    else printf("CASE_RESULT:${caseNum}:%d\\n", res);\n`;
+        harness += `    int res2 = lRUCacheGet(c, 2);\n`;
+        harness += `    if (res2 == -1) printf("CASE_RESULT:${caseNum}:Evicts key 2 (least recently used)\\n");\n`;
+        harness += `    else printf("CASE_RESULT:${caseNum}:%d\\n", res2);\n`;
         harness += `    lRUCacheFree(c);\n`;
       }
     }
@@ -716,7 +858,7 @@ function buildCppHarness(code: string, challenge: CodingChallenge): string {
   const probType = resolveChallengeType(challenge);
   const hasClassSolution = code.includes('class Solution');
 
-  let harness = `#include <iostream>\n#include <vector>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <algorithm>\n#include <queue>\n#include <stack>\n#define private public\n#define protected public\nusing namespace std;\n\n`;
+  let harness = `#include <iostream>\n#include <vector>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <map>\n#include <set>\n#include <algorithm>\n#include <queue>\n#include <stack>\n#include <deque>\n#include <cmath>\n#include <climits>\n#include <sstream>\n#include <numeric>\n#define private public\n#define protected public\nusing namespace std;\n\n`;
   harness += code + '\n\n';
   harness += `void __print_vector(const vector<int>& v) {\n  cout << "[";\n  for(size_t i = 0; i < v.size(); i++) {\n    cout << v[i] << (i + 1 < v.size() ? ", " : "");\n  }\n  cout << "]";\n}\n\n`;
   harness += `int main() {\n`;
@@ -800,17 +942,23 @@ function buildCppHarness(code: string, challenge: CodingChallenge): string {
 function buildJavaHarness(code: string, challenge: CodingChallenge): string {
   const probType = resolveChallengeType(challenge);
 
-  // Sanitize: remove 'public ' from 'public class Solution' so it compiles inside SolutionRunner.java
-  let sanitizedCode = code.replace(/\bpublic\s+class\s+Solution\b/g, 'class Solution');
+  // Sanitize: strip package declarations if present
+  let sanitizedCode = code.replace(/^\s*package\s+[^;]+;\s*/gm, '');
+
+  // Strip 'public ' from any classes so they compile inside SolutionRunner.java
+  sanitizedCode = sanitizedCode.replace(/\bpublic\s+class\s+([A-Za-z0-9_]+)/g, 'class $1');
 
   // If user pasted raw methods without class Solution wrapper, wrap it
   if (!sanitizedCode.includes('class Solution') && !sanitizedCode.includes('class LRUCache')) {
     sanitizedCode = `class Solution {\n${sanitizedCode}\n}`;
   }
 
-  let harness = `import java.util.*;\nimport java.io.*;\n\n`;
+  let harness = `import java.util.*;\nimport java.io.*;\nimport java.math.*;\n\n`;
   harness += sanitizedCode + '\n\n';
-  harness += `public class SolutionRunner {\n  public static void main(String[] args) {\n    Solution sol = new Solution();\n`;
+  harness += `public class SolutionRunner {\n  public static void main(String[] args) {\n`;
+  if (probType !== 'lru-cache' && sanitizedCode.includes('class Solution')) {
+    harness += `    Solution sol = new Solution();\n`;
+  }
 
   for (let i = 0; i < challenge.sampleTestCases.length; i++) {
     const tc = challenge.sampleTestCases[i];
@@ -884,7 +1032,7 @@ function buildJavaHarness(code: string, challenge: CodingChallenge): string {
 function buildPythonHarness(code: string, challenge: CodingChallenge): string {
   const probType = resolveChallengeType(challenge);
 
-  let harness = `import json, sys\n\n`;
+  let harness = `import json, sys, collections, heapq, math, typing\nfrom typing import List, Dict, Set, Tuple, Optional, Any\n\n`;
   harness += code + '\n\n';
   harness += `def __run_all_cases():\n`;
   harness += `    sol = Solution() if 'Solution' in globals() else None\n`;
@@ -975,4 +1123,190 @@ function buildPythonHarness(code: string, challenge: CodingChallenge): string {
 
   harness += `\n__run_all_cases()\n`;
   return harness;
+}
+
+// ---------------------------------------------------------------------------
+// STANDARD I/O RUNNERS (for questions that read from stdin / print to stdout)
+// ---------------------------------------------------------------------------
+
+function formatStdinPayload(inputStr: string): string {
+  const vars = parseInputVariables(inputStr);
+  const values = Object.values(vars);
+  if (values.length > 0) {
+    return values.map((v) => (typeof v === 'object' ? JSON.stringify(v) : String(v))).join('\n') + '\n';
+  }
+  return inputStr + '\n';
+}
+
+function executePerTestCaseStdin(
+  exeFile: string,
+  challenge: CodingChallenge,
+  env: NodeJS.ProcessEnv,
+  startTime: number,
+  compilerInfo: string
+): CodeExecutionResponse {
+  const testResults: RunTestResult[] = [];
+  let allPassed = true;
+
+  for (let i = 0; i < challenge.sampleTestCases.length; i++) {
+    const tc = challenge.sampleTestCases[i];
+    const stdinData = formatStdinPayload(tc.input);
+
+    try {
+      const stdout = execFileSync(exeFile, [], {
+        env,
+        input: stdinData,
+        timeout: 3000,
+        encoding: 'utf8',
+      }).trim();
+
+      const passed = checkTestPassed(stdout, tc.expectedOutput);
+      if (!passed) allPassed = false;
+
+      testResults.push({
+        caseNumber: i + 1,
+        passed,
+        input: tc.input,
+        expected: tc.expectedOutput,
+        actual: stdout,
+        logs: [stdout],
+      });
+    } catch (runErr: any) {
+      allPassed = false;
+      const isTimeout = runErr.signal === 'SIGTERM' || runErr.code === 'ETIMEDOUT';
+      testResults.push({
+        caseNumber: i + 1,
+        passed: false,
+        input: tc.input,
+        expected: tc.expectedOutput,
+        actual: isTimeout ? 'Time Limit Exceeded (> 3.0s)' : 'Runtime Error: ' + (runErr.stderr || runErr.message),
+        logs: [],
+      });
+    }
+  }
+
+  return {
+    status: allPassed ? 'Accepted' : 'Wrong Answer',
+    runtimeMs: Date.now() - startTime,
+    allPassed,
+    compilerOutput: compilerInfo,
+    testResults,
+  };
+}
+
+function sanitizeJavaStdinCode(code: string): string {
+  let sanitized = code.replace(/^\s*package\s+[^;]+;\s*/gm, '');
+  sanitized = sanitized.replace(/\bpublic\s+class\s+([A-Za-z0-9_]+)/g, 'class $1');
+  return `import java.util.*;\nimport java.io.*;\n\n${sanitized}\n\npublic class SolutionRunner {\n  public static void main(String[] args) {\n    Main.main(args);\n  }\n}\n`;
+}
+
+function executeJavaPerTestCaseStdin(
+  tmpDir: string,
+  challenge: CodingChallenge,
+  env: NodeJS.ProcessEnv,
+  startTime: number,
+  compilerInfo: string
+): CodeExecutionResponse {
+  const testResults: RunTestResult[] = [];
+  let allPassed = true;
+
+  for (let i = 0; i < challenge.sampleTestCases.length; i++) {
+    const tc = challenge.sampleTestCases[i];
+    const stdinData = formatStdinPayload(tc.input);
+
+    try {
+      const stdout = execFileSync('java', ['-cp', tmpDir, 'SolutionRunner'], {
+        env,
+        input: stdinData,
+        timeout: 3000,
+        encoding: 'utf8',
+      }).trim();
+
+      const passed = checkTestPassed(stdout, tc.expectedOutput);
+      if (!passed) allPassed = false;
+
+      testResults.push({
+        caseNumber: i + 1,
+        passed,
+        input: tc.input,
+        expected: tc.expectedOutput,
+        actual: stdout,
+        logs: [stdout],
+      });
+    } catch (runErr: any) {
+      allPassed = false;
+      const isTimeout = runErr.signal === 'SIGTERM' || runErr.code === 'ETIMEDOUT';
+      testResults.push({
+        caseNumber: i + 1,
+        passed: false,
+        input: tc.input,
+        expected: tc.expectedOutput,
+        actual: isTimeout ? 'Time Limit Exceeded (> 3.0s)' : 'Runtime Error: ' + (runErr.stderr || runErr.message),
+        logs: [],
+      });
+    }
+  }
+
+  return {
+    status: allPassed ? 'Accepted' : 'Wrong Answer',
+    runtimeMs: Date.now() - startTime,
+    allPassed,
+    compilerOutput: compilerInfo,
+    testResults,
+  };
+}
+
+function executePythonPerTestCaseStdin(
+  pyFile: string,
+  challenge: CodingChallenge,
+  env: NodeJS.ProcessEnv,
+  startTime: number
+): CodeExecutionResponse {
+  const testResults: RunTestResult[] = [];
+  let allPassed = true;
+
+  for (let i = 0; i < challenge.sampleTestCases.length; i++) {
+    const tc = challenge.sampleTestCases[i];
+    const stdinData = formatStdinPayload(tc.input);
+
+    try {
+      const stdout = execFileSync('python', [pyFile], {
+        env,
+        input: stdinData,
+        timeout: 3500,
+        encoding: 'utf8',
+      }).trim();
+
+      const passed = checkTestPassed(stdout, tc.expectedOutput);
+      if (!passed) allPassed = false;
+
+      testResults.push({
+        caseNumber: i + 1,
+        passed,
+        input: tc.input,
+        expected: tc.expectedOutput,
+        actual: stdout,
+        logs: [stdout],
+      });
+    } catch (runErr: any) {
+      allPassed = false;
+      const isTimeout = runErr.signal === 'SIGTERM' || runErr.code === 'ETIMEDOUT';
+      testResults.push({
+        caseNumber: i + 1,
+        passed: false,
+        input: tc.input,
+        expected: tc.expectedOutput,
+        actual: isTimeout ? 'Time Limit Exceeded (> 3.0s)' : 'Runtime Error: ' + (runErr.stderr || runErr.message),
+        logs: [],
+      });
+    }
+  }
+
+  return {
+    status: allPassed ? 'Accepted' : 'Wrong Answer',
+    runtimeMs: Date.now() - startTime,
+    allPassed,
+    compilerOutput: 'Python 3.12 — Stdin/Stdout Mode',
+    testResults,
+  };
 }
