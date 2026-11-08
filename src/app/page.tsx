@@ -60,13 +60,24 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [isEvaluatingAnswer, setIsEvaluatingAnswer] = useState(false);
+  const [isServerKeyLocked, setIsServerKeyLocked] = useState<boolean>(false);
+  const [maskedServerKey, setMaskedServerKey] = useState<string | null>(null);
 
-  // Load custom API key from localStorage if saved
+  // Load custom API key from localStorage and check server-side key
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('interview_iq_gemini_key');
       if (stored) setApiKey(stored);
     }
+    fetch('/api/validate-key')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.lockedIn) {
+          setIsServerKeyLocked(true);
+          setMaskedServerKey(data.maskedKey);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const handleSaveApiKey = (key: string) => {
@@ -352,7 +363,7 @@ export default function Home() {
         currentStep={currentStep}
         onResetSession={handleResetSession}
         onOpenApiKeyModal={() => setIsApiKeyModalOpen(true)}
-        hasApiKey={Boolean(apiKey)}
+        hasApiKey={isServerKeyLocked || Boolean(apiKey)}
       />
 
       {/* Main Content Area based on Stage */}
@@ -434,6 +445,8 @@ export default function Home() {
         onClose={() => setIsApiKeyModalOpen(false)}
         apiKey={apiKey}
         onSaveApiKey={handleSaveApiKey}
+        serverLockedIn={isServerKeyLocked}
+        maskedServerKey={maskedServerKey}
       />
     </div>
   );

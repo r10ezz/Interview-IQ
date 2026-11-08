@@ -61,16 +61,24 @@ export default function Navbar({
             onClick={onOpenApiKeyModal}
             className={`inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all ${
               hasApiKey
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+                ? 'bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100 shadow-2xs'
                 : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200 hover:text-slate-900'
             }`}
             title="Configure Gemini API Key"
           >
-            <Key className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">
-              {hasApiKey ? 'Gemini AI Active' : 'API Key Config'}
-            </span>
-            <span className="sm:hidden">API</span>
+            {hasApiKey ? (
+              <>
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="hidden sm:inline font-semibold">Gemini AI Active (Locked In)</span>
+                <span className="sm:hidden font-semibold">AI Active</span>
+              </>
+            ) : (
+              <>
+                <Key className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">API Key Config</span>
+                <span className="sm:hidden">API</span>
+              </>
+            )}
           </button>
         </div>
       </div>

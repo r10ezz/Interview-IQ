@@ -517,8 +517,8 @@ Return strictly a JSON object:
 }
 
 /**
- * Dynamically generates an adaptive probing question when the initial question pool is exhausted
- * and the interviewer needs to probe deeper (adaptive session length between 5 and 12 questions).
+ * Dynamically generates an adaptive probing question on a NEW, UNTESTED topic
+ * when the initial question pool is exhausted or when switching topics (aiming for 3-4 distinct topics).
  */
 export async function generateAdaptiveNextQuestion(
   analysis: CandidateAnalysis,
@@ -526,12 +526,13 @@ export async function generateAdaptiveNextQuestion(
   jobDescription: string,
   previousHistory: InterviewExchange[],
   currentDifficulty: DifficultyLevel,
-  customApiKey?: string
+  customApiKey?: string,
+  concludedTopics: string[] = []
 ): Promise<InterviewQuestion> {
   const client = getGeminiClient(customApiKey);
   const questionNumber = previousHistory.length + 1;
-  const askedQuestions = previousHistory.map(h => h.question.text);
-  const askedCategories = previousHistory.map(h => h.question.category || h.question.targetSkillOrProject);
+  const askedQuestions = previousHistory.map((h) => h.question.text);
+  const askedCategories = previousHistory.map((h) => h.question.category || h.question.targetSkillOrProject);
 
   if (client) {
     for (const modelName of GEMINI_MODELS) {
@@ -544,32 +545,28 @@ export async function generateAdaptiveNextQuestion(
           },
         });
 
-        const prompt = `You are Sarah, an experienced Principal Engineering Lead conducting a technical interview.
+        const prompt = `You are Sarah, an experienced Principal Engineering Lead conducting a realistic technical screening.
 Candidate: "${analysis.candidateName}"
 Current Progress: Question ${questionNumber} of max 12.
-Candidate Target Skills: ${analysis.technicalSkills.join(', ')}
+Target Role Skills: ${analysis.technicalSkills.join(', ')}
 
-TOPICS PREVIOUSLY ASKED:
-${askedCategories.join(', ')}
+TOPICS ALREADY EVALUATED & CONCLUDED (DO NOT ASK ABOUT THESE AGAIN):
+${concludedTopics.length > 0 ? concludedTopics.join(', ') : askedCategories.join(', ')}
 
-RECENT CANDIDATE PERFORMANCE & MISSING POINTS:
-${previousHistory.slice(-3).map((h, i) => `Q: "${h.question.text}" -> Score: ${h.evaluation.score}/100. Gaps: ${h.evaluation.keyMissingPoints.slice(0, 2).join('; ') || 'None'}`).join('\n')}
-
-OBJECTIVE:
-The candidate needs further probing to establish conclusive signal.
-Formulate 1 targeted, realistic 1-2 sentence technical question.
-Focus on an unverified skill, an edge case from their resume, or a core architectural mechanism (e.g. database transactions, caching, error recovery, async concurrency, security, or API design).
-Keep the question short, conversational, and direct (1-2 sentences max).
+OBJECTIVE & INTERVIEW INTEGRITY RULES:
+1. SWITCH TO A FRESH, UNTESTED TOPIC: We already reached a conclusion on the topics above. Do NOT ask another question on them. Our aim is to fairly assess 3 to 4 distinct competencies (e.g. Core Language, Framework State, Backend/Storage, System Reliability, or Applied Project Architecture) without badgering the candidate or repeating topics.
+2. Formulate 1 short, direct, 1-2 sentence question on a completely NEW competency area from their resume or JD.
+3. Keep the tone conversational, professional, and clear.
 
 Return strictly a JSON object:
 {
   "id": "q-adapt-${questionNumber}",
   "roundType": "foundation",
-  "skillStage": "Stage ${questionNumber}: Adaptive Competency Probe",
-  "text": "Short 1-2 sentence direct question",
+  "skillStage": "Stage ${questionNumber}: New Competency Evaluation",
+  "text": "Short 1-2 sentence direct question on an unassessed topic",
   "type": "job-requirement",
-  "category": "e.g. Database Indexing or Concurrency",
-  "targetSkillOrProject": "e.g. PostgreSQL or React",
+  "category": "e.g. Database Indexing or Caching Architecture",
+  "targetSkillOrProject": "e.g. PostgreSQL or Redis",
   "difficulty": "${currentDifficulty}",
   "suggestedDurationSeconds": 90
 }
@@ -590,10 +587,13 @@ Return strictly a JSON object:
     }
   }
 
-  // Dynamic fallback from expanded pool
+  // Dynamic fallback from expanded pool, finding a topic not yet concluded
   const fallbackBank = generateFallbackQuestions(analysis, 'mixed', currentDifficulty, 12, ['foundation', 'behavioral']);
   const askedTexts = new Set(askedQuestions);
-  const unused = fallbackBank.find(q => !askedTexts.has(q.text));
+  const unusedFromNewTopic = fallbackBank.find(
+    (q) => !askedTexts.has(q.text) && !concludedTopics.some((t) => q.category.toLowerCase().includes(t.toLowerCase()))
+  );
+  const unused = unusedFromNewTopic || fallbackBank.find((q) => !askedTexts.has(q.text));
 
   return unused || {
     id: `q-adapt-${questionNumber}`,

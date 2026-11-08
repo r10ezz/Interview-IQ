@@ -8,6 +8,8 @@ interface ApiKeyModalProps {
   onClose: () => void;
   apiKey: string;
   onSaveApiKey: (key: string) => void;
+  serverLockedIn?: boolean;
+  maskedServerKey?: string | null;
 }
 
 export default function ApiKeyModal({
@@ -15,6 +17,8 @@ export default function ApiKeyModal({
   onClose,
   apiKey,
   onSaveApiKey,
+  serverLockedIn = false,
+  maskedServerKey = null,
 }: ApiKeyModalProps) {
   const [inputVal, setInputVal] = useState(apiKey);
   const [savedSuccess, setSavedSuccess] = useState(false);
@@ -74,6 +78,18 @@ export default function ApiKeyModal({
               </p>
             </div>
           </div>
+
+          {serverLockedIn && (
+            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 flex items-center space-x-2.5">
+              <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+              <div>
+                <p className="font-semibold text-emerald-950">Gemini API is Locked In & Active</p>
+                <p className="text-emerald-700 text-[11px] mt-0.5">
+                  Server key detected ({maskedServerKey || 'Active in .env.local'}). Live AI evaluation is running.
+                </p>
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1.5">
