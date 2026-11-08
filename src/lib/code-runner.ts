@@ -21,6 +21,8 @@ export interface CodeExecutionResponse {
   allPassed: boolean;
   testResults: RunTestResult[];
   compilationError?: string;
+  compilerOutput?: string;
+  rawStdout?: string;
   error?: string;
 }
 
@@ -35,13 +37,33 @@ function getExecutionEnv(): NodeJS.ProcessEnv {
   };
 }
 
+// Identify challenge type by id, title, or keywords
+export function resolveChallengeType(challenge: CodingChallenge): string {
+  const id = (challenge.id || '').toLowerCase();
+  const title = (challenge.title || '').toLowerCase();
+  const starter = (challenge.starterCode || '').toLowerCase();
+
+  if (id.includes('two-sum') || title.includes('two sum') || starter.includes('twosum')) return 'two-sum';
+  if (id.includes('palindrome') || title.includes('palindrome') || starter.includes('palindrome')) return 'valid-palindrome';
+  if (id.includes('stock') || title.includes('stock') || starter.includes('maxprofit')) return 'best-time-stock';
+  if (id.includes('substring') || title.includes('substring') || starter.includes('longestsubstring')) return 'longest-substring';
+  if (id.includes('parenthes') || title.includes('parenthes') || starter.includes('isvalid')) return 'valid-parentheses';
+  if (id.includes('island') || title.includes('island') || starter.includes('numislands')) return 'number-of-islands';
+  if (id.includes('course') || title.includes('course') || starter.includes('canfinish') || starter.includes('shard')) return 'course-schedule';
+  if (id.includes('lru') || title.includes('lru') || starter.includes('lrucache')) return 'lru-cache';
+
+  return 'generic';
+}
+
 // Safely evaluate assignment string like: "nums = [2, 7, 11, 15], target = 9"
 export function parseInputVariables(inputStr: string): Record<string, any> {
   const context = vm.createContext({});
   try {
     vm.runInContext('var ' + inputStr, context, { timeout: 500 });
   } catch {
-    // Return empty if parsing failed
+    try {
+      vm.runInContext(inputStr, context, { timeout: 500 });
+    } catch {}
   }
   const result: Record<string, any> = {};
   for (const [k, v] of Object.entries(context)) {
@@ -90,7 +112,7 @@ export function checkTestPassed(actual: string, expected: string): boolean {
       return JSON.stringify(sortedActual) === JSON.stringify(sortedExpected);
     }
   } catch {
-    // Not valid JSON, compare strings
+    // String comparison fallback
   }
 
   return cleanActual.toLowerCase() === cleanExpected.toLowerCase();
@@ -121,13 +143,13 @@ export async function executeC(
       });
     } catch (compileErr: any) {
       const stderr = compileErr.stderr || compileErr.message || 'Compilation failed';
-      // Clean up internal temp paths from compiler error
       const cleanedError = stderr.replace(new RegExp(tmpDir.replace(/\\/g, '\\\\'), 'g'), '');
       return {
         status: 'Compilation Error',
         runtimeMs: Date.now() - startTime,
         allPassed: false,
         compilationError: cleanedError,
+        compilerOutput: `GCC 15.2 (C17) Compile Error:\n${cleanedError}`,
         testResults: challenge.sampleTestCases.map((tc, idx) => ({
           caseNumber: idx + 1,
           passed: false,
@@ -139,7 +161,6 @@ export async function executeC(
       };
     }
 
-    // Run compiled binary
     let stdout = '';
     try {
       stdout = execFileSync(exeFile, [], {
@@ -154,6 +175,7 @@ export async function executeC(
         runtimeMs: Date.now() - startTime,
         allPassed: false,
         error: runErr.message,
+        compilerOutput: `GCC 15.2 (C17) — Build Succeeded\nRuntime Status: ${isTimeout ? 'Time Limit Exceeded (> 3.0s)' : 'Process exited with error'}`,
         testResults: challenge.sampleTestCases.map((tc, idx) => ({
           caseNumber: idx + 1,
           passed: false,
@@ -165,7 +187,7 @@ export async function executeC(
       };
     }
 
-    return parseHarnessOutput(stdout, challenge, startTime);
+    return parseHarnessOutput(stdout, challenge, startTime, 'GCC 15.2 (C17) — Build Succeeded');
   } finally {
     try {
       fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -204,6 +226,7 @@ export async function executeCpp(
         runtimeMs: Date.now() - startTime,
         allPassed: false,
         compilationError: cleanedError,
+        compilerOutput: `G++ 15.2 (C++17) Compile Error:\n${cleanedError}`,
         testResults: challenge.sampleTestCases.map((tc, idx) => ({
           caseNumber: idx + 1,
           passed: false,
@@ -215,7 +238,6 @@ export async function executeCpp(
       };
     }
 
-    // Run compiled binary
     let stdout = '';
     try {
       stdout = execFileSync(exeFile, [], {
@@ -230,6 +252,7 @@ export async function executeCpp(
         runtimeMs: Date.now() - startTime,
         allPassed: false,
         error: runErr.message,
+        compilerOutput: `G++ 15.2 (C++17) — Build Succeeded\nRuntime Status: ${isTimeout ? 'Time Limit Exceeded (> 3.0s)' : 'Process exited with error'}`,
         testResults: challenge.sampleTestCases.map((tc, idx) => ({
           caseNumber: idx + 1,
           passed: false,
@@ -241,7 +264,7 @@ export async function executeCpp(
       };
     }
 
-    return parseHarnessOutput(stdout, challenge, startTime);
+    return parseHarnessOutput(stdout, challenge, startTime, 'G++ 15.2 (C++17) — Build Succeeded');
   } finally {
     try {
       fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -279,6 +302,7 @@ export async function executeJava(
         runtimeMs: Date.now() - startTime,
         allPassed: false,
         compilationError: cleanedError,
+        compilerOutput: `OpenJDK 21 (javac) Compile Error:\n${cleanedError}`,
         testResults: challenge.sampleTestCases.map((tc, idx) => ({
           caseNumber: idx + 1,
           passed: false,
@@ -290,7 +314,6 @@ export async function executeJava(
       };
     }
 
-    // Run Java class
     let stdout = '';
     try {
       stdout = execFileSync('java', ['-cp', tmpDir, 'SolutionRunner'], {
@@ -305,6 +328,7 @@ export async function executeJava(
         runtimeMs: Date.now() - startTime,
         allPassed: false,
         error: runErr.message,
+        compilerOutput: `OpenJDK 21 — Build Succeeded\nRuntime Status: ${isTimeout ? 'Time Limit Exceeded (> 3.0s)' : 'Process exited with error'}`,
         testResults: challenge.sampleTestCases.map((tc, idx) => ({
           caseNumber: idx + 1,
           passed: false,
@@ -316,7 +340,7 @@ export async function executeJava(
       };
     }
 
-    return parseHarnessOutput(stdout, challenge, startTime);
+    return parseHarnessOutput(stdout, challenge, startTime, 'OpenJDK 21 — Build Succeeded');
   } finally {
     try {
       fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -341,7 +365,7 @@ export async function executePython(
       timeout: 3000,
       encoding: 'utf8',
     });
-    return parseHarnessOutput(stdout, challenge, startTime);
+    return parseHarnessOutput(stdout, challenge, startTime, 'Python 3.12 — Execution Completed');
   } catch (runErr: any) {
     const isTimeout = runErr.signal === 'SIGTERM' || runErr.code === 'ETIMEDOUT';
     const stderr = runErr.stderr || runErr.message || 'Python execution failed';
@@ -352,6 +376,7 @@ export async function executePython(
       runtimeMs: Date.now() - startTime,
       allPassed: false,
       compilationError: isSyntaxErr ? stderr : undefined,
+      compilerOutput: isSyntaxErr ? `Python Syntax Error:\n${stderr}` : `Python 3.12 Runtime Error:\n${stderr}`,
       testResults: challenge.sampleTestCases.map((tc, idx) => ({
         caseNumber: idx + 1,
         passed: false,
@@ -384,6 +409,7 @@ export async function executeNodeVM(
         runtimeMs: Date.now() - startTime,
         allPassed: false,
         compilationError: transpileErr.message,
+        compilerOutput: `TypeScript 5.0 Transpilation Error:\n${transpileErr.message}`,
         testResults: challenge.sampleTestCases.map((tc, i) => ({
           caseNumber: i + 1,
           passed: false,
@@ -406,14 +432,21 @@ export async function executeNodeVM(
   if (starterFnMatch) expectedFnName = starterFnMatch[1];
   else if (starterClassMatch) expectedFnName = starterClassMatch[1];
 
+  const probType = resolveChallengeType(challenge);
+
   for (let i = 0; i < challenge.sampleTestCases.length; i++) {
     const tc = challenge.sampleTestCases[i];
     const logs: string[] = [];
 
+    const inputVars = parseInputVariables(tc.input);
+
     const sandbox: any = {
+      __input: inputVars,
       console: {
         log: (...args: any[]) =>
           logs.push(args.map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ')),
+        error: (...args: any[]) =>
+          logs.push('[error] ' + args.map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ')),
       },
       result: undefined,
       setTimeout: (fn: Function) => fn(),
@@ -422,9 +455,8 @@ export async function executeNodeVM(
 
     const context = vm.createContext(sandbox);
     let runnerScript = jsCode + '\n';
-    const inputStr = tc.input.trim();
 
-    if (challenge.id === 'dsa-lru-cache' || jsCode.includes('class LRUCache') || jsCode.includes('var LRUCache')) {
+    if (probType === 'lru-cache' || jsCode.includes('class LRUCache') || jsCode.includes('var LRUCache') || jsCode.includes('function LRUCache')) {
       if (i === 0) {
         runnerScript += `
           const cache = new LRUCache(2);
@@ -444,11 +476,7 @@ export async function executeNodeVM(
         `;
       }
     } else {
-      const varMatches = [...inputStr.matchAll(/(?:^|[,;]\s*)([a-zA-Z0-9_$]+)\s*=/g)];
-      const varNames = varMatches.map((m) => m[1]);
-
       runnerScript += `
-        var ${inputStr};
         let __targetFn = null;
         if (typeof ${expectedFnName || '__unlikely__'} === 'function') {
           __targetFn = ${expectedFnName};
@@ -466,7 +494,8 @@ export async function executeNodeVM(
           if (keys.length > 0) __targetFn = this[keys[keys.length - 1]];
         }
         if (__targetFn) {
-          result = __targetFn(${varNames.join(', ')});
+          const __args = Object.values(__input);
+          result = __targetFn(...__args);
         } else {
           throw new Error('Could not find function ${expectedFnName || 'solution'}. Please define it.');
         }
@@ -504,6 +533,7 @@ export async function executeNodeVM(
     status: allPassed ? 'Accepted' : hasRuntimeError ? 'Runtime Error' : 'Wrong Answer',
     runtimeMs: Date.now() - startTime,
     allPassed,
+    compilerOutput: `Node.js v22 (VM Sandbox) — Executed in ${Date.now() - startTime}ms`,
     testResults,
   };
 }
@@ -516,7 +546,7 @@ export async function executeCode(
   challenge: CodingChallenge,
   language: SupportedLanguage | string
 ): Promise<CodeExecutionResponse> {
-  const normLang = language.toLowerCase();
+  const normLang = (language || '').toLowerCase().trim();
 
   switch (normLang) {
     case 'c':
@@ -543,7 +573,8 @@ export async function executeCode(
 function parseHarnessOutput(
   stdout: string,
   challenge: CodingChallenge,
-  startTime: number
+  startTime: number,
+  compilerInfo?: string
 ): CodeExecutionResponse {
   const testResults: RunTestResult[] = [];
   let allPassed = true;
@@ -564,7 +595,7 @@ function parseHarnessOutput(
 
   for (let i = 0; i < challenge.sampleTestCases.length; i++) {
     const tc = challenge.sampleTestCases[i];
-    const actual = resultMap.get(i + 1) ?? 'No output produced';
+    const actual = resultMap.get(i + 1) ?? (stdout.trim() ? `Output: ${stdout.trim()}` : 'No output produced');
     const passed = checkTestPassed(actual, tc.expectedOutput);
 
     if (!passed) allPassed = false;
@@ -583,12 +614,15 @@ function parseHarnessOutput(
     status: allPassed ? 'Accepted' : 'Wrong Answer',
     runtimeMs: Date.now() - startTime,
     allPassed,
+    compilerOutput: compilerInfo,
+    rawStdout: stdout,
     testResults,
   };
 }
 
 function buildCHarness(code: string, challenge: CodingChallenge): string {
-  let harness = `#include <stdio.h>\n#include <stdlib.h>\n#include <stdbool.h>\n#include <string.h>\n#include <ctype.h>\n\n`;
+  const probType = resolveChallengeType(challenge);
+  let harness = `#include <stdio.h>\n#include <stdlib.h>\n#include <stdbool.h>\n#include <string.h>\n#include <ctype.h>\n#include <math.h>\n\n`;
   harness += code + '\n\n';
   harness += `void __print_int_array(int* arr, int size) {\n  printf("[");\n  for(int i = 0; i < size; i++) {\n    printf("%d%s", arr[i], (i + 1 < size ? ", " : ""));\n  }\n  printf("]");\n}\n\n`;
   harness += `int main() {\n`;
@@ -600,7 +634,7 @@ function buildCHarness(code: string, challenge: CodingChallenge): string {
 
     harness += `  // Case ${caseNum}\n  {\n`;
 
-    if (challenge.id === 'dsa-two-sum') {
+    if (probType === 'two-sum') {
       const nums = vars.nums || [];
       const target = vars.target ?? 0;
       harness += `    int nums[] = {${nums.join(', ')}};\n`;
@@ -609,27 +643,27 @@ function buildCHarness(code: string, challenge: CodingChallenge): string {
       harness += `    printf("CASE_RESULT:${caseNum}:");\n`;
       harness += `    if (res) { __print_int_array(res, returnSize); free(res); } else { printf("[]"); }\n`;
       harness += `    printf("\\n");\n`;
-    } else if (challenge.id === 'dsa-valid-palindrome') {
+    } else if (probType === 'valid-palindrome') {
       const s = (vars.s ?? '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
       harness += `    char s[] = "${s}";\n`;
       harness += `    bool res = isPalindrome(s);\n`;
       harness += `    printf("CASE_RESULT:${caseNum}:%s\\n", res ? "true" : "false");\n`;
-    } else if (challenge.id === 'dsa-best-time-stock') {
+    } else if (probType === 'best-time-stock') {
       const prices = vars.prices || [];
       harness += `    int prices[] = {${prices.join(', ')}};\n`;
       harness += `    int res = maxProfit(prices, ${prices.length});\n`;
       harness += `    printf("CASE_RESULT:${caseNum}:%d\\n", res);\n`;
-    } else if (challenge.id === 'dsa-longest-substring') {
+    } else if (probType === 'longest-substring') {
       const s = (vars.s ?? '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
       harness += `    char s[] = "${s}";\n`;
       harness += `    int res = lengthOfLongestSubstring(s);\n`;
       harness += `    printf("CASE_RESULT:${caseNum}:%d\\n", res);\n`;
-    } else if (challenge.id === 'dsa-valid-parentheses') {
+    } else if (probType === 'valid-parentheses') {
       const s = (vars.s ?? '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
       harness += `    char s[] = "${s}";\n`;
       harness += `    bool res = isValid(s);\n`;
       harness += `    printf("CASE_RESULT:${caseNum}:%s\\n", res ? "true" : "false");\n`;
-    } else if (challenge.id === 'dsa-number-of-islands') {
+    } else if (probType === 'number-of-islands') {
       const grid = vars.grid || [];
       const m = grid.length;
       const n = m > 0 ? grid[0].length : 0;
@@ -640,7 +674,7 @@ function buildCHarness(code: string, challenge: CodingChallenge): string {
       harness += `    int colSizes[] = {${grid.map(() => n).join(', ')}};\n`;
       harness += `    int res = numIslands(grid, ${m}, colSizes);\n`;
       harness += `    printf("CASE_RESULT:${caseNum}:%d\\n", res);\n`;
-    } else if (challenge.id === 'dsa-course-schedule') {
+    } else if (probType === 'course-schedule') {
       const numCourses = vars.numCourses ?? 0;
       const prereqs = vars.prerequisites || [];
       for (let r = 0; r < prereqs.length; r++) {
@@ -650,7 +684,7 @@ function buildCHarness(code: string, challenge: CodingChallenge): string {
       harness += `    int colSizes[] = {${prereqs.map(() => 2).join(', ')}};\n`;
       harness += `    bool res = canFinish(${numCourses}, ${prereqs.length > 0 ? 'prereqPtrs' : 'NULL'}, ${prereqs.length}, ${prereqs.length > 0 ? 'colSizes' : 'NULL'});\n`;
       harness += `    printf("CASE_RESULT:${caseNum}:%s\\n", res ? "true" : "false");\n`;
-    } else if (challenge.id === 'dsa-lru-cache') {
+    } else if (probType === 'lru-cache') {
       if (i === 0) {
         harness += `    LRUCache* c = lRUCacheCreate(2);\n`;
         harness += `    lRUCachePut(c, 1, 1);\n`;
@@ -679,58 +713,65 @@ function buildCHarness(code: string, challenge: CodingChallenge): string {
 }
 
 function buildCppHarness(code: string, challenge: CodingChallenge): string {
-  let harness = `#include <iostream>\n#include <vector>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <algorithm>\n#include <queue>\n#include <stack>\nusing namespace std;\n\n`;
+  const probType = resolveChallengeType(challenge);
+  const hasClassSolution = code.includes('class Solution');
+
+  let harness = `#include <iostream>\n#include <vector>\n#include <string>\n#include <unordered_map>\n#include <unordered_set>\n#include <algorithm>\n#include <queue>\n#include <stack>\n#define private public\n#define protected public\nusing namespace std;\n\n`;
   harness += code + '\n\n';
   harness += `void __print_vector(const vector<int>& v) {\n  cout << "[";\n  for(size_t i = 0; i < v.size(); i++) {\n    cout << v[i] << (i + 1 < v.size() ? ", " : "");\n  }\n  cout << "]";\n}\n\n`;
-  harness += `int main() {\n  Solution sol;\n`;
+  harness += `int main() {\n`;
+  if (hasClassSolution) {
+    harness += `  Solution sol;\n`;
+  }
 
   for (let i = 0; i < challenge.sampleTestCases.length; i++) {
     const tc = challenge.sampleTestCases[i];
     const vars = parseInputVariables(tc.input);
     const caseNum = i + 1;
+    const caller = hasClassSolution ? 'sol.' : '';
 
     harness += `  // Case ${caseNum}\n  {\n`;
 
-    if (challenge.id === 'dsa-two-sum') {
+    if (probType === 'two-sum') {
       const nums = vars.nums || [];
       const target = vars.target ?? 0;
       harness += `    vector<int> nums = {${nums.join(', ')}};\n`;
-      harness += `    auto res = sol.twoSum(nums, ${target});\n`;
+      harness += `    auto res = ${caller}twoSum(nums, ${target});\n`;
       harness += `    cout << "CASE_RESULT:${caseNum}:";\n`;
       harness += `    __print_vector(res);\n`;
       harness += `    cout << "\\n";\n`;
-    } else if (challenge.id === 'dsa-valid-palindrome') {
+    } else if (probType === 'valid-palindrome') {
       const s = (vars.s ?? '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
       harness += `    string s = "${s}";\n`;
-      harness += `    bool res = sol.isPalindrome(s);\n`;
+      harness += `    bool res = ${caller}isPalindrome(s);\n`;
       harness += `    cout << "CASE_RESULT:${caseNum}:" << (res ? "true" : "false") << "\\n";\n`;
-    } else if (challenge.id === 'dsa-best-time-stock') {
+    } else if (probType === 'best-time-stock') {
       const prices = vars.prices || [];
       harness += `    vector<int> prices = {${prices.join(', ')}};\n`;
-      harness += `    int res = sol.maxProfit(prices);\n`;
+      harness += `    int res = ${caller}maxProfit(prices);\n`;
       harness += `    cout << "CASE_RESULT:${caseNum}:" << res << "\\n";\n`;
-    } else if (challenge.id === 'dsa-longest-substring') {
+    } else if (probType === 'longest-substring') {
       const s = (vars.s ?? '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
       harness += `    string s = "${s}";\n`;
-      harness += `    int res = sol.lengthOfLongestSubstring(s);\n`;
+      harness += `    int res = ${caller}lengthOfLongestSubstring(s);\n`;
       harness += `    cout << "CASE_RESULT:${caseNum}:" << res << "\\n";\n`;
-    } else if (challenge.id === 'dsa-valid-parentheses') {
+    } else if (probType === 'valid-parentheses') {
       const s = (vars.s ?? '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
       harness += `    string s = "${s}";\n`;
-      harness += `    bool res = sol.isValid(s);\n`;
+      harness += `    bool res = ${caller}isValid(s);\n`;
       harness += `    cout << "CASE_RESULT:${caseNum}:" << (res ? "true" : "false") << "\\n";\n`;
-    } else if (challenge.id === 'dsa-number-of-islands') {
+    } else if (probType === 'number-of-islands') {
       const grid = vars.grid || [];
       harness += `    vector<vector<char>> grid = {${grid.map((r: string[]) => `{${r.map((c) => `'${c}'`).join(', ')}}`).join(', ')}};\n`;
-      harness += `    int res = sol.numIslands(grid);\n`;
+      harness += `    int res = ${caller}numIslands(grid);\n`;
       harness += `    cout << "CASE_RESULT:${caseNum}:" << res << "\\n";\n`;
-    } else if (challenge.id === 'dsa-course-schedule') {
+    } else if (probType === 'course-schedule') {
       const numCourses = vars.numCourses ?? 0;
       const prereqs = vars.prerequisites || [];
       harness += `    vector<vector<int>> prereqs = {${prereqs.map((p: number[]) => `{${p.join(', ')}}`).join(', ')}};\n`;
-      harness += `    bool res = sol.canFinish(${numCourses}, prereqs);\n`;
+      harness += `    bool res = ${caller}canFinish(${numCourses}, prereqs);\n`;
       harness += `    cout << "CASE_RESULT:${caseNum}:" << (res ? "true" : "false") << "\\n";\n`;
-    } else if (challenge.id === 'dsa-lru-cache') {
+    } else if (probType === 'lru-cache') {
       if (i === 0) {
         harness += `    LRUCache c(2);\n`;
         harness += `    c.put(1, 1);\n`;
@@ -757,8 +798,18 @@ function buildCppHarness(code: string, challenge: CodingChallenge): string {
 }
 
 function buildJavaHarness(code: string, challenge: CodingChallenge): string {
+  const probType = resolveChallengeType(challenge);
+
+  // Sanitize: remove 'public ' from 'public class Solution' so it compiles inside SolutionRunner.java
+  let sanitizedCode = code.replace(/\bpublic\s+class\s+Solution\b/g, 'class Solution');
+
+  // If user pasted raw methods without class Solution wrapper, wrap it
+  if (!sanitizedCode.includes('class Solution') && !sanitizedCode.includes('class LRUCache')) {
+    sanitizedCode = `class Solution {\n${sanitizedCode}\n}`;
+  }
+
   let harness = `import java.util.*;\nimport java.io.*;\n\n`;
-  harness += code + '\n\n';
+  harness += sanitizedCode + '\n\n';
   harness += `public class SolutionRunner {\n  public static void main(String[] args) {\n    Solution sol = new Solution();\n`;
 
   for (let i = 0; i < challenge.sampleTestCases.length; i++) {
@@ -768,44 +819,44 @@ function buildJavaHarness(code: string, challenge: CodingChallenge): string {
 
     harness += `    // Case ${caseNum}\n    {\n`;
 
-    if (challenge.id === 'dsa-two-sum') {
+    if (probType === 'two-sum') {
       const nums = vars.nums || [];
       const target = vars.target ?? 0;
       harness += `      int[] nums = new int[]{${nums.join(', ')}};\n`;
       harness += `      int[] res = sol.twoSum(nums, ${target});\n`;
       harness += `      System.out.println("CASE_RESULT:${caseNum}:" + Arrays.toString(res));\n`;
-    } else if (challenge.id === 'dsa-valid-palindrome') {
+    } else if (probType === 'valid-palindrome') {
       const s = (vars.s ?? '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
       harness += `      String s = "${s}";\n`;
       harness += `      boolean res = sol.isPalindrome(s);\n`;
       harness += `      System.out.println("CASE_RESULT:${caseNum}:" + res);\n`;
-    } else if (challenge.id === 'dsa-best-time-stock') {
+    } else if (probType === 'best-time-stock') {
       const prices = vars.prices || [];
       harness += `      int[] prices = new int[]{${prices.join(', ')}};\n`;
       harness += `      int res = sol.maxProfit(prices);\n`;
       harness += `      System.out.println("CASE_RESULT:${caseNum}:" + res);\n`;
-    } else if (challenge.id === 'dsa-longest-substring') {
+    } else if (probType === 'longest-substring') {
       const s = (vars.s ?? '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
       harness += `      String s = "${s}";\n`;
       harness += `      int res = sol.lengthOfLongestSubstring(s);\n`;
       harness += `      System.out.println("CASE_RESULT:${caseNum}:" + res);\n`;
-    } else if (challenge.id === 'dsa-valid-parentheses') {
+    } else if (probType === 'valid-parentheses') {
       const s = (vars.s ?? '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
       harness += `      String s = "${s}";\n`;
       harness += `      boolean res = sol.isValid(s);\n`;
       harness += `      System.out.println("CASE_RESULT:${caseNum}:" + res);\n`;
-    } else if (challenge.id === 'dsa-number-of-islands') {
+    } else if (probType === 'number-of-islands') {
       const grid = vars.grid || [];
       harness += `      char[][] grid = new char[][]{${grid.map((r: string[]) => `new char[]{${r.map((c) => `'${c}'`).join(', ')}}`).join(', ')}};\n`;
       harness += `      int res = sol.numIslands(grid);\n`;
       harness += `      System.out.println("CASE_RESULT:${caseNum}:" + res);\n`;
-    } else if (challenge.id === 'dsa-course-schedule') {
+    } else if (probType === 'course-schedule') {
       const numCourses = vars.numCourses ?? 0;
       const prereqs = vars.prerequisites || [];
       harness += `      int[][] prereqs = new int[][]{${prereqs.map((p: number[]) => `new int[]{${p.join(', ')}}`).join(', ')}};\n`;
       harness += `      boolean res = sol.canFinish(${numCourses}, prereqs);\n`;
       harness += `      System.out.println("CASE_RESULT:${caseNum}:" + res);\n`;
-    } else if (challenge.id === 'dsa-lru-cache') {
+    } else if (probType === 'lru-cache') {
       if (i === 0) {
         harness += `      LRUCache c = new LRUCache(2);\n`;
         harness += `      c.put(1, 1);\n`;
@@ -831,6 +882,8 @@ function buildJavaHarness(code: string, challenge: CodingChallenge): string {
 }
 
 function buildPythonHarness(code: string, challenge: CodingChallenge): string {
+  const probType = resolveChallengeType(challenge);
+
   let harness = `import json, sys\n\n`;
   harness += code + '\n\n';
   harness += `def __run_all_cases():\n`;
@@ -843,44 +896,65 @@ function buildPythonHarness(code: string, challenge: CodingChallenge): string {
 
     harness += `    # Case ${caseNum}\n`;
 
-    if (challenge.id === 'dsa-two-sum') {
+    if (probType === 'two-sum') {
       const nums = JSON.stringify(vars.nums || []);
       const target = vars.target ?? 0;
       harness += `    fn = getattr(sol, 'twoSum', twoSum if 'twoSum' in globals() else None)\n`;
+      harness += `    if fn is None:\n`;
+      harness += `        callables = [v for k, v in globals().items() if callable(v) and not k.startswith('_') and k != '__run_all_cases']\n`;
+      harness += `        if callables: fn = callables[-1]\n`;
       harness += `    res = fn(${nums}, ${target})\n`;
       harness += `    print("CASE_RESULT:${caseNum}:" + json.dumps(res))\n`;
-    } else if (challenge.id === 'dsa-valid-palindrome') {
+    } else if (probType === 'valid-palindrome') {
       const s = JSON.stringify(vars.s ?? '');
       harness += `    fn = getattr(sol, 'isPalindrome', isPalindrome if 'isPalindrome' in globals() else None)\n`;
+      harness += `    if fn is None:\n`;
+      harness += `        callables = [v for k, v in globals().items() if callable(v) and not k.startswith('_') and k != '__run_all_cases']\n`;
+      harness += `        if callables: fn = callables[-1]\n`;
       harness += `    res = fn(${s})\n`;
       harness += `    print("CASE_RESULT:${caseNum}:" + ("true" if res else "false"))\n`;
-    } else if (challenge.id === 'dsa-best-time-stock') {
+    } else if (probType === 'best-time-stock') {
       const prices = JSON.stringify(vars.prices || []);
       harness += `    fn = getattr(sol, 'maxProfit', maxProfit if 'maxProfit' in globals() else None)\n`;
+      harness += `    if fn is None:\n`;
+      harness += `        callables = [v for k, v in globals().items() if callable(v) and not k.startswith('_') and k != '__run_all_cases']\n`;
+      harness += `        if callables: fn = callables[-1]\n`;
       harness += `    res = fn(${prices})\n`;
       harness += `    print("CASE_RESULT:${caseNum}:" + json.dumps(res))\n`;
-    } else if (challenge.id === 'dsa-longest-substring') {
+    } else if (probType === 'longest-substring') {
       const s = JSON.stringify(vars.s ?? '');
       harness += `    fn = getattr(sol, 'lengthOfLongestSubstring', lengthOfLongestSubstring if 'lengthOfLongestSubstring' in globals() else None)\n`;
+      harness += `    if fn is None:\n`;
+      harness += `        callables = [v for k, v in globals().items() if callable(v) and not k.startswith('_') and k != '__run_all_cases']\n`;
+      harness += `        if callables: fn = callables[-1]\n`;
       harness += `    res = fn(${s})\n`;
       harness += `    print("CASE_RESULT:${caseNum}:" + json.dumps(res))\n`;
-    } else if (challenge.id === 'dsa-valid-parentheses') {
+    } else if (probType === 'valid-parentheses') {
       const s = JSON.stringify(vars.s ?? '');
       harness += `    fn = getattr(sol, 'isValid', isValid if 'isValid' in globals() else None)\n`;
+      harness += `    if fn is None:\n`;
+      harness += `        callables = [v for k, v in globals().items() if callable(v) and not k.startswith('_') and k != '__run_all_cases']\n`;
+      harness += `        if callables: fn = callables[-1]\n`;
       harness += `    res = fn(${s})\n`;
       harness += `    print("CASE_RESULT:${caseNum}:" + ("true" if res else "false"))\n`;
-    } else if (challenge.id === 'dsa-number-of-islands') {
+    } else if (probType === 'number-of-islands') {
       const grid = JSON.stringify(vars.grid || []);
       harness += `    fn = getattr(sol, 'numIslands', numIslands if 'numIslands' in globals() else None)\n`;
+      harness += `    if fn is None:\n`;
+      harness += `        callables = [v for k, v in globals().items() if callable(v) and not k.startswith('_') and k != '__run_all_cases']\n`;
+      harness += `        if callables: fn = callables[-1]\n`;
       harness += `    res = fn(${grid})\n`;
       harness += `    print("CASE_RESULT:${caseNum}:" + json.dumps(res))\n`;
-    } else if (challenge.id === 'dsa-course-schedule') {
+    } else if (probType === 'course-schedule') {
       const numCourses = vars.numCourses ?? 0;
       const prereqs = JSON.stringify(vars.prerequisites || []);
       harness += `    fn = getattr(sol, 'canFinish', canFinish if 'canFinish' in globals() else None)\n`;
+      harness += `    if fn is None:\n`;
+      harness += `        callables = [v for k, v in globals().items() if callable(v) and not k.startswith('_') and k != '__run_all_cases']\n`;
+      harness += `        if callables: fn = callables[-1]\n`;
       harness += `    res = fn(${numCourses}, ${prereqs})\n`;
       harness += `    print("CASE_RESULT:${caseNum}:" + ("true" if res else "false"))\n`;
-    } else if (challenge.id === 'dsa-lru-cache') {
+    } else if (probType === 'lru-cache') {
       if (i === 0) {
         harness += `    c = LRUCache(2)\n`;
         harness += `    c.put(1, 1)\n`;

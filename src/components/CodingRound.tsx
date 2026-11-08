@@ -15,6 +15,9 @@ import {
   CheckCircle,
   AlertTriangle,
   Cpu,
+  ChevronDown,
+  ChevronUp,
+  X,
 } from 'lucide-react';
 import {
   CodingChallenge,
@@ -87,6 +90,10 @@ export default function CodingRound({
   const [activeTab, setActiveTab] = useState<'problem' | 'testcases' | 'console'>('problem');
   const [selectedTestCaseIdx, setSelectedTestCaseIdx] = useState(0);
 
+  // Dedicated bottom Output Screen Drawer state
+  const [isConsoleOpen, setIsConsoleOpen] = useState(false);
+  const [consoleTab, setConsoleTab] = useState<'testcases' | 'compiler'>('testcases');
+
   // Real execution state
   const [isRunningCode, setIsRunningCode] = useState(false);
   const [runResult, setRunResult] = useState<{
@@ -94,6 +101,8 @@ export default function CodingRound({
     runtimeMs: number;
     allPassed: boolean;
     compilationError?: string;
+    compilerOutput?: string;
+    rawStdout?: string;
     testResults: {
       caseNumber: number;
       passed: boolean;
@@ -135,19 +144,18 @@ export default function CodingRound({
       setRunResult(null);
       setActiveTab('problem');
       setSelectedTestCaseIdx(0);
+      setIsConsoleOpen(false);
     }
   }, [currentIndex, currentChallenge]);
 
   // Handle switching language in dropdown
   const handleLanguageChange = (newLang: SupportedLanguage) => {
-    // 1. Cache current code under the old language
     const updatedMap = {
       ...codeMap,
       [language]: code,
     };
     setCodeMap(updatedMap);
 
-    // 2. Load cached code or fresh starter code for the new language
     const nextCode =
       updatedMap[newLang] ||
       currentChallenge?.starterCodes?.[newLang] ||
@@ -218,6 +226,7 @@ export default function CodingRound({
   // REAL Run Code against test cases
   const handleRunCode = async () => {
     setIsRunningCode(true);
+    setIsConsoleOpen(true);
     setActiveTab('console');
     setRunResult(null);
 
@@ -240,13 +249,22 @@ export default function CodingRound({
         runtimeMs: data.runtimeMs,
         allPassed: data.allPassed,
         compilationError: data.compilationError,
+        compilerOutput: data.compilerOutput,
+        rawStdout: data.rawStdout,
         testResults: data.testResults,
       });
+
+      if (data.status === 'Compilation Error' || data.compilationError) {
+        setConsoleTab('compiler');
+      } else {
+        setConsoleTab('testcases');
+      }
     } catch (err: any) {
       setRunResult({
         status: 'Runtime Error',
         runtimeMs: 0,
         allPassed: false,
+        compilerOutput: 'Execution Error: ' + err.message,
         testResults: currentChallenge.sampleTestCases.map((tc, idx) => ({
           caseNumber: idx + 1,
           passed: false,
@@ -256,6 +274,7 @@ export default function CodingRound({
           logs: [],
         })),
       });
+      setConsoleTab('compiler');
     } finally {
       setIsRunningCode(false);
     }
@@ -264,6 +283,7 @@ export default function CodingRound({
   // Submit Code & Evaluate Big-O and correctness
   const handleSubmitCode = async () => {
     setIsSubmitting(true);
+    setIsConsoleOpen(true);
     setActiveTab('console');
 
     try {
@@ -435,7 +455,7 @@ export default function CodingRound({
 
       {/* Main Split Layout (100% Locked Viewport Height) */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-2 min-h-0 overflow-hidden">
-        {/* Left Panel: Description & Test Cases & Results */}
+        {/* Left Panel: Description & Test Cases */}
         <div className="lg:col-span-5 h-full flex flex-col overflow-hidden rounded-xl bg-white border border-slate-200 shadow-xs">
           {/* Tabs Navigation */}
           <div className="h-10 px-3 bg-slate-50 border-b border-slate-200 flex items-center space-x-1 shrink-0">
@@ -604,7 +624,7 @@ export default function CodingRound({
             </div>
           )}
 
-          {/* Tab 3: Real Test Results (Internal Scroll Only) */}
+          {/* Tab 3: Real Test Results (Left Panel view) */}
           {activeTab === 'console' && (
             <div className="flex-1 overflow-y-auto min-h-0 p-5 space-y-4 text-xs font-mono">
               {isRunningCode ? (
@@ -641,12 +661,19 @@ export default function CodingRound({
                     </span>
                   </div>
 
+                  {/* Compiler info banner */}
+                  {runResult.compilerOutput && (
+                    <div className="p-2.5 rounded-lg bg-slate-100 border border-slate-200 text-slate-700 font-mono text-[11px] whitespace-pre-wrap">
+                      {runResult.compilerOutput}
+                    </div>
+                  )}
+
                   {/* Compilation Error Display */}
                   {runResult.compilationError && (
                     <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 space-y-1.5 font-mono text-[11px]">
                       <div className="flex items-center space-x-1.5 text-amber-800 font-sans font-bold">
                         <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-                        <span>Compiler Diagnostics ({LANGUAGE_CONFIGS[language].compiler})</span>
+                        <span>Compiler Diagnostics</span>
                       </div>
                       <pre className="whitespace-pre-wrap overflow-x-auto p-2 bg-amber-100/60 rounded border border-amber-300/40 text-[11px] leading-relaxed">
                         {runResult.compilationError}
@@ -740,7 +767,7 @@ export default function CodingRound({
           )}
         </div>
 
-        {/* Right Panel: LeetCode-style Code Editor */}
+        {/* Right Panel: LeetCode-style Code Editor + Expandable Output Console */}
         <div className="lg:col-span-7 h-full flex flex-col overflow-hidden rounded-xl bg-white border border-slate-200 shadow-xs">
           {/* Editor Header Toolbar */}
           <div className="h-10 px-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between shrink-0">
@@ -809,15 +836,275 @@ export default function CodingRound({
             />
           </div>
 
+          {/* ============================================================== */}
+          {/* DEDICATED OUTPUT SCREEN / EXECUTION TERMINAL (No matter if pass or fail) */}
+          {/* ============================================================== */}
+          {isConsoleOpen && (
+            <div className="h-64 sm:h-72 border-t border-slate-800 bg-slate-900 flex flex-col shrink-0 text-xs overflow-hidden animate-slide-up shadow-inner">
+              {/* Terminal Console Header */}
+              <div className="h-9 px-3 bg-slate-950 border-b border-slate-800 flex items-center justify-between shrink-0 select-none">
+                <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-1.5 text-slate-300 font-sans font-bold text-[11px]">
+                    <Terminal className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>Compiler & Execution Console</span>
+                  </div>
+
+                  <div className="h-3.5 w-[1px] bg-slate-800 mx-1" />
+
+                  {/* Tabs: Test Cases vs Compiler Output */}
+                  <div className="flex items-center space-x-1">
+                    <button
+                      type="button"
+                      onClick={() => setConsoleTab('testcases')}
+                      className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-colors ${
+                        consoleTab === 'testcases'
+                          ? 'bg-slate-800 text-white font-bold'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      Test Results
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConsoleTab('compiler')}
+                      className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-colors ${
+                        consoleTab === 'compiler'
+                          ? 'bg-slate-800 text-white font-bold'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      Compiler Log
+                    </button>
+                  </div>
+
+                  {runResult && (
+                    <span
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold border ml-2 ${
+                        runResult.status === 'Accepted'
+                          ? 'bg-emerald-950/80 text-emerald-300 border-emerald-800'
+                          : runResult.status === 'Compilation Error'
+                          ? 'bg-amber-950/80 text-amber-300 border-amber-800'
+                          : 'bg-rose-950/80 text-rose-300 border-rose-800'
+                      }`}
+                    >
+                      {runResult.status} ({runResult.runtimeMs}ms)
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center space-x-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsConsoleOpen(false)}
+                    className="p-1 rounded text-slate-400 hover:text-slate-100 hover:bg-slate-800"
+                    title="Minimize console"
+                  >
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsConsoleOpen(false);
+                      setRunResult(null);
+                    }}
+                    className="p-1 rounded text-slate-400 hover:text-slate-100 hover:bg-slate-800"
+                    title="Close console"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Console Body */}
+              <div className="flex-1 overflow-y-auto p-3 text-slate-200 font-mono text-[12px] space-y-3">
+                {isRunningCode ? (
+                  <div className="flex items-center justify-center space-x-2.5 py-12 text-slate-400 font-sans">
+                    <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+                    <span>Compiling with {LANGUAGE_CONFIGS[language].compiler}...</span>
+                  </div>
+                ) : runResult ? (
+                  <>
+                    {/* View 1: Test Cases Tab */}
+                    {consoleTab === 'testcases' && (
+                      <div className="space-y-3 font-mono">
+                        {/* Case Pills */}
+                        <div className="flex items-center space-x-1.5 font-sans">
+                          {runResult.testResults.map((tr, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => setSelectedTestCaseIdx(idx)}
+                              className={`px-2 py-0.5 rounded text-[11px] font-semibold flex items-center space-x-1 transition-all ${
+                                selectedTestCaseIdx === idx
+                                  ? tr.passed
+                                    ? 'bg-emerald-600 text-white'
+                                    : 'bg-rose-600 text-white'
+                                  : tr.passed
+                                  ? 'bg-slate-800 text-emerald-400 border border-emerald-900/50'
+                                  : 'bg-slate-800 text-rose-400 border border-rose-900/50'
+                              }`}
+                            >
+                              <span>Case {tr.caseNumber}</span>
+                              <span>{tr.passed ? '✓' : '✗'}</span>
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Selected Case Content */}
+                        {runResult.testResults[selectedTestCaseIdx] && (
+                          <div className="space-y-2 p-2.5 rounded-lg bg-slate-950/80 border border-slate-800">
+                            <div>
+                              <div className="text-[10px] uppercase font-sans font-bold text-slate-400 mb-0.5">
+                                Input
+                              </div>
+                              <div className="p-2 rounded bg-slate-900 text-slate-300 text-[11px]">
+                                {runResult.testResults[selectedTestCaseIdx].input}
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              <div>
+                                <div className="text-[10px] uppercase font-sans font-bold text-slate-400 mb-0.5">
+                                  Your Output
+                                </div>
+                                <div
+                                  className={`p-2 rounded text-[11px] border font-bold ${
+                                    runResult.testResults[selectedTestCaseIdx].passed
+                                      ? 'bg-emerald-950/40 border-emerald-800/80 text-emerald-300'
+                                      : 'bg-rose-950/40 border-rose-800/80 text-rose-300'
+                                  }`}
+                                >
+                                  {runResult.testResults[selectedTestCaseIdx].actual}
+                                </div>
+                              </div>
+
+                              <div>
+                                <div className="text-[10px] uppercase font-sans font-bold text-slate-400 mb-0.5">
+                                  Expected Output
+                                </div>
+                                <div className="p-2 rounded bg-slate-900 text-emerald-400 border border-slate-800 text-[11px] font-bold">
+                                  {runResult.testResults[selectedTestCaseIdx].expected}
+                                </div>
+                              </div>
+                            </div>
+
+                            {runResult.testResults[selectedTestCaseIdx].logs &&
+                              runResult.testResults[selectedTestCaseIdx].logs.length > 0 && (
+                                <div>
+                                  <div className="text-[10px] uppercase font-sans font-bold text-slate-400 mb-0.5">
+                                    Stdout / Print Output
+                                  </div>
+                                  <div className="p-2 rounded bg-black/60 text-slate-300 text-[11px] whitespace-pre-wrap">
+                                    {runResult.testResults[selectedTestCaseIdx].logs.join('\n')}
+                                  </div>
+                                </div>
+                              )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* View 2: Raw Compiler & Build Log Tab */}
+                    {consoleTab === 'compiler' && (
+                      <div className="space-y-2 font-mono text-[11px]">
+                        <div className="text-slate-400 text-[10px] font-sans font-bold uppercase">
+                          Build & Runtime Environment
+                        </div>
+                        <div className="p-2.5 rounded bg-black/50 border border-slate-800 text-slate-300 space-y-1">
+                          <div>
+                            <span className="text-slate-500">Compiler / Runtime: </span>
+                            <span className="text-indigo-300">{LANGUAGE_CONFIGS[language].compiler}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500">Status: </span>
+                            <span
+                              className={
+                                runResult.status === 'Accepted'
+                                  ? 'text-emerald-400'
+                                  : runResult.status === 'Compilation Error'
+                                  ? 'text-amber-400 font-bold'
+                                  : 'text-rose-400'
+                              }
+                            >
+                              {runResult.status} (exit code{' '}
+                              {runResult.status === 'Accepted'
+                                ? '0'
+                                : runResult.status === 'Compilation Error'
+                                ? '1'
+                                : '0'}
+                              )
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500">Execution Time: </span>
+                            <span className="text-slate-300">{runResult.runtimeMs} ms</span>
+                          </div>
+                          {runResult.compilerOutput && (
+                            <div className="pt-1 text-slate-400 text-[11px] border-t border-slate-800 mt-1 whitespace-pre-wrap">
+                              {runResult.compilerOutput}
+                            </div>
+                          )}
+                        </div>
+
+                        {runResult.compilationError && (
+                          <div>
+                            <div className="text-rose-400 font-bold text-[11px] mb-1 font-sans flex items-center space-x-1">
+                              <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
+                              <span>Compiler Error Output (stderr):</span>
+                            </div>
+                            <pre className="p-2.5 rounded bg-rose-950/60 border border-rose-800/80 text-rose-200 overflow-x-auto whitespace-pre-wrap leading-relaxed text-[11px]">
+                              {runResult.compilationError}
+                            </pre>
+                          </div>
+                        )}
+
+                        {runResult.rawStdout && (
+                          <div>
+                            <div className="text-slate-400 text-[10px] font-sans font-bold uppercase mb-0.5">
+                              Raw Stdout Stream
+                            </div>
+                            <pre className="p-2 rounded bg-black/60 text-slate-300 border border-slate-800 overflow-x-auto whitespace-pre-wrap text-[11px]">
+                              {runResult.rawStdout}
+                            </pre>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-10 text-slate-500 font-sans space-y-1">
+                    <Terminal className="w-6 h-6 text-slate-600" />
+                    <span>Click &ldquo;Run Code&rdquo; to compile and view execution output here.</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Editor Bottom Action Bar (Fixed, never scrolls off) */}
           <div className="h-12 px-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between shrink-0">
             <button
               type="button"
-              onClick={() => setActiveTab(activeTab === 'console' ? 'problem' : 'console')}
-              className="inline-flex items-center space-x-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-xs hover:bg-slate-100 transition-colors"
+              onClick={() => setIsConsoleOpen(!isConsoleOpen)}
+              className={`inline-flex items-center space-x-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg shadow-xs border transition-colors ${
+                isConsoleOpen
+                  ? 'bg-slate-900 text-white border-slate-900'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
+              }`}
             >
-              <Terminal className="w-3.5 h-3.5 text-slate-500" />
-              <span>Console</span>
+              <Terminal className="w-3.5 h-3.5" />
+              <span>Console & Output</span>
+              {runResult && (
+                <span
+                  className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                    runResult.allPassed
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-rose-100 text-rose-800'
+                  }`}
+                >
+                  {runResult.testResults.filter((r) => r.passed).length}/{runResult.testResults.length}
+                </span>
+              )}
             </button>
 
             <div className="flex items-center space-x-2">
