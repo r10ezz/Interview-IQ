@@ -3,6 +3,8 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { CodingChallenge, CodingEvaluation } from '@/types/interview';
 import { evaluateCodingFallback } from '@/lib/coding-challenges';
 
+const GEMINI_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-3.5-flash'];
+
 export async function POST(req: NextRequest) {
   try {
     const { code, challenge, language = 'typescript', customApiKey } = await req.json();
@@ -13,22 +15,13 @@ export async function POST(req: NextRequest) {
 
     const key = customApiKey || process.env.GEMINI_API_KEY;
 
-    if (!key) {
+    if (!key || key.trim() === '' || key === 'your_gemini_api_key_here') {
       const evaluation = evaluateCodingFallback(code, challenge as CodingChallenge, language);
       return NextResponse.json({ success: true, evaluation, source: 'fallback' });
     }
 
-    try {
-      const client = new GoogleGenerativeAI(key.trim());
-      const model = client.getGenerativeModel({
-        model: 'gemini-2.5-flash',
-        generationConfig: {
-          responseMimeType: 'application/json',
-          temperature: 0.1,
-        },
-      });
-
-      const prompt = `You are a Principal Software Engineer assessing a candidate's live coding submission.
+    const client = new GoogleGenerativeAI(key.trim());
+    const prompt = `You are a Principal Software Engineer assessing a candidate's live coding submission.
 
 CODING CHALLENGE:
 Title: ${challenge.title}
@@ -62,19 +55,31 @@ Return strictly a JSON object matching this schema:
 }
 `;
 
-      const result = await model.generateContent(prompt);
-      let text = result.response.text().trim();
-      if (text.startsWith('```')) {
-        text = text.replace(/^```(?:json)?\n?/, '').replace(/```$/, '').trim();
-      }
+    for (const modelName of GEMINI_MODELS) {
+      try {
+        const model = client.getGenerativeModel({
+          model: modelName,
+          generationConfig: {
+            responseMimeType: 'application/json',
+            temperature: 0.1,
+          },
+        });
 
-      const evaluation = JSON.parse(text) as CodingEvaluation;
-      return NextResponse.json({ success: true, evaluation, source: 'gemini' });
-    } catch (err) {
-      console.warn('Gemini coding evaluation fallback:', err);
-      const evaluation = evaluateCodingFallback(code, challenge as CodingChallenge, language);
-      return NextResponse.json({ success: true, evaluation, source: 'fallback' });
+        const result = await model.generateContent(prompt);
+        let text = result.response.text().trim();
+        if (text.startsWith('```')) {
+          text = text.replace(/^```(?:json)?\n?/, '').replace(/```$/, '').trim();
+        }
+
+        const evaluation = JSON.parse(text) as CodingEvaluation;
+        return NextResponse.json({ success: true, evaluation, source: 'gemini' });
+      } catch (err) {
+        console.warn(`Coding evaluation model ${modelName} failed, falling back:`, err instanceof Error ? err.message : err);
+      }
     }
+
+    const evaluation = evaluateCodingFallback(code, challenge as CodingChallenge, language);
+    return NextResponse.json({ success: true, evaluation, source: 'fallback' });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Evaluation error' },
