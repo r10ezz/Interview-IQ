@@ -362,6 +362,7 @@ export default function Home() {
       <Navbar
         currentStep={currentStep}
         onResetSession={handleResetSession}
+        onStartInterview={() => setCurrentStep('setup')}
         onOpenApiKeyModal={() => setIsApiKeyModalOpen(true)}
         hasApiKey={isServerKeyLocked || Boolean(apiKey)}
       />

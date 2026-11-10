@@ -6,6 +6,7 @@ import { Sparkles, Key, RotateCcw } from 'lucide-react';
 interface NavbarProps {
   onOpenApiKeyModal?: () => void;
   onResetSession?: () => void;
+  onStartInterview?: () => void;
   currentStep?: 'landing' | 'setup' | 'analysis' | 'interview' | 'coding' | 'evaluation';
   hasApiKey?: boolean;
 }
@@ -13,11 +14,12 @@ interface NavbarProps {
 export default function Navbar({
   onOpenApiKeyModal,
   onResetSession,
+  onStartInterview,
   currentStep = 'landing',
   hasApiKey = false,
 }: NavbarProps) {
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/90 backdrop-blur-md">
+    <header className="sticky top-0 z-40 w-full border-b border-slate-200/80 bg-white/80 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Brand / Logo */}
         <div 
@@ -26,16 +28,16 @@ export default function Navbar({
           role="button"
           tabIndex={0}
         >
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center shadow-sm shadow-indigo-600/20 group-hover:scale-105 transition-transform duration-200">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-600 to-violet-600 flex items-center justify-center shadow-xs shadow-indigo-600/20 group-hover:scale-105 transition-transform duration-200">
             <Sparkles className="w-4 h-4 text-white" />
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <span className="text-lg font-bold tracking-tight text-slate-900 group-hover:text-indigo-600 transition-colors">
+              <span className="text-lg font-extrabold tracking-tight text-slate-900 group-hover:text-indigo-600 transition-colors">
                 Interview<span className="text-indigo-600">IQ</span>
               </span>
-              <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                AI Platform
+              <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                AI Calibration
               </span>
             </div>
             <p className="text-[11px] text-slate-500 hidden md:block">
@@ -46,6 +48,15 @@ export default function Navbar({
 
         {/* Actions */}
         <div className="flex items-center space-x-2.5">
+          {currentStep === 'landing' && onStartInterview && (
+            <button
+              onClick={onStartInterview}
+              className="hidden sm:inline-flex items-center space-x-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-xs hover:shadow-sm transition-all"
+            >
+              <span>Start Interview</span>
+            </button>
+          )}
+
           {currentStep !== 'landing' && (
             <button
               onClick={onResetSession}
